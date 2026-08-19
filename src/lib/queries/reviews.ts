@@ -1,5 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server";
-import type { Review } from "@/lib/types/database";
+import type { Review, ReviewerRole } from "@/lib/types/database";
 
 export interface ReviewStats {
   total: number;
@@ -7,17 +7,24 @@ export interface ReviewStats {
   unhandled: number;
 }
 
-export async function getFlaggedReviews(): Promise<{
+export async function getFlaggedReviews(reviewerRole?: ReviewerRole): Promise<{
   data: Review[] | null;
   error: string | null;
 }> {
   try {
     const supabase = createServerClient();
-    const { data, error } = await supabase
+    let query = supabase
       .from("Review")
       .select("*")
       .eq("flag", true)
-      .order("createdAt", { ascending: false });
+      .eq("handled", false)
+      .order("createdAt", { ascending: true });
+
+    if (reviewerRole !== undefined) {
+      query = query.eq("reviewerRole", reviewerRole);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       return { data: null, error: error.message };
