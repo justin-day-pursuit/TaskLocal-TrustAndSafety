@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { resolveReviewAndRedirect } from "@/app/flagged/actions";
 import { RepeatFlagBadge } from "@/components/flagged/RepeatFlagBadge";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import {
@@ -75,12 +76,28 @@ export default async function FlaggedDetailPage({
             Flagged review with booking and listing context.
           </p>
         </div>
-        {repeatFlagResult.data !== null ? (
-          <div className="flex items-center gap-2 text-sm text-zinc-600">
-            <span>Open flags against party:</span>
-            <RepeatFlagBadge count={repeatFlagResult.data} />
-          </div>
-        ) : null}
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          {repeatFlagResult.data !== null ? (
+            <div className="flex items-center gap-2 text-sm text-zinc-600">
+              <span>Open flags against party:</span>
+              <RepeatFlagBadge count={repeatFlagResult.data} />
+            </div>
+          ) : null}
+          {!review.handled ? (
+            <form action={resolveReviewAndRedirect.bind(null, review.id)}>
+              <button
+                type="submit"
+                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+              >
+                Resolve
+              </button>
+            </form>
+          ) : (
+            <span className="rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800">
+              Resolved
+            </span>
+          )}
+        </div>
       </div>
 
       {repeatFlagResult.error ? (

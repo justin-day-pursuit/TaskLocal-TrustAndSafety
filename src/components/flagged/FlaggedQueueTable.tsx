@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { RepeatFlagBadge } from "@/components/flagged/RepeatFlagBadge";
+import { ResolveButton } from "@/components/flagged/ResolveButton";
 import type { RepeatFlagCounts } from "@/lib/queries/reviews";
 import type { Review } from "@/lib/types/database";
 
@@ -57,6 +58,9 @@ export function FlaggedQueueTable({
             <th className="px-4 py-3 text-left font-medium text-zinc-600">
               Open flags
             </th>
+            <th className="px-4 py-3 text-left font-medium text-zinc-600">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
@@ -83,6 +87,9 @@ export function FlaggedQueueTable({
               </td>
               <td className="px-4 py-3">
                 <RepeatFlagBadge count={repeatFlagCounts[review.id] ?? 0} />
+              </td>
+              <td className="px-4 py-3">
+                <ResolveButton reviewId={review.id} />
               </td>
             </tr>
           ))}
