@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { resolveReviewAndRedirect } from "@/app/flagged/actions";
 import { RepeatFlagBadge } from "@/components/flagged/RepeatFlagBadge";
+import { ResolveButton } from "@/components/flagged/ResolveButton";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import {
   getRepeatFlagCountForReview,
@@ -84,14 +84,12 @@ export default async function FlaggedDetailPage({
             </div>
           ) : null}
           {!review.handled ? (
-            <form action={resolveReviewAndRedirect.bind(null, review.id)}>
-              <button
-                type="submit"
-                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-              >
-                Resolve
-              </button>
-            </form>
+            <ResolveButton
+              reviewId={review.id}
+              label="Resolve"
+              redirectTo="/flagged"
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+            />
           ) : (
             <span className="rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800">
               Resolved

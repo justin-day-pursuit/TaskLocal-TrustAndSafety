@@ -9,12 +9,14 @@ interface ResolveButtonProps {
   reviewId: string;
   label?: string;
   className?: string;
+  redirectTo?: string;
 }
 
 export function ResolveButton({
   reviewId,
   label = "Resolve",
   className,
+  redirectTo,
 }: ResolveButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -25,6 +27,11 @@ export function ResolveButton({
 
       if (result?.error) {
         window.alert(result.error);
+        return;
+      }
+
+      if (redirectTo) {
+        router.push(redirectTo);
         return;
       }
 
