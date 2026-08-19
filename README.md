@@ -1,14 +1,23 @@
 # TaskLocal — Trust & Safety
 
-Frontend dashboard for the TaskLocal Trust & Safety product. This app reads from the shared Supabase Postgres database used by all four class products.
+Internal moderation dashboard for the TaskLocal Trust & Safety product (Product D, Sheet 04 MVP). This app reads from and updates the shared Supabase Postgres database used across TaskLocal marketplace products.
 
-## What this app will do
+> **Scope Note**: This repository covers **Product D (Trust & Safety Dashboard)** only. Marketplace products A (Provider), B (Customer), and C (Chatbot) are handled in separate services.
 
-- Surface flagged marketplace reviews and bookings that need attention
-- Show trends in flags, review volume, and sentiment
-- Extract natural language themes from reciprocal review comments
+## Working MVP Features
 
-This repo currently contains **scaffolding only**: typed Supabase access, shared schema types, and placeholder dashboard routes with live read queries.
+This repo was built from initial scaffolding into a fully working Trust & Safety moderation dashboard MVP:
+
+- **Overview Dashboard (`/`)**: Displays live review stats (total reviews, flagged reviews, unhandled flags) alongside live database connection status.
+- **Flagged Queue (`/flagged`)**: Displays open, unhandled review flags (`handled = false`) sorted oldest-first by creation timestamp.
+  - **Reviewer Role Filter**: Tabs to filter queue by `All`, `Customer` (reviews written by customers), or `Provider` (reviews written by providers).
+  - **Repeat-Flag Badge**: Calculates and displays the total count of open flags against the reviewed party (provider or customer) to surface repeat issues.
+- **Review Detail (`/flagged/[id]`)**: Comprehensive detail view assembling the full database relation chain (`Review` → `Booking` → `Listing`) to provide full context before resolving issues.
+- **Resolve Action**: Inline button on queue rows and detail page executing the `resolveReview` mutation to mark flags as handled (`handled = true`) and revalidate views.
+
+### Non-MVP Placeholders
+- **`/trends`**: Placeholder page for future flag trends, review volume, and sentiment analytics.
+- **`/reviews`**: Placeholder page for future natural language processing (NLP) and theme extraction on reciprocal review comments.
 
 ## Setup
 
@@ -39,25 +48,27 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Shared database rules
+## Shared Database Rules
 
 - **Do not create, alter, or drop tables.** The schema is shared with other products.
 - Table names are capitalized: `Provider`, `Listing`, `Customer`, `Booking`, `Review`.
 - Foreign keys and enum-like fields are plain text — validate values in app code.
 - Generate new IDs with short prefixes: `prv_`, `lst_`, `cus_`, `bkg_`, `rev_`.
 
-## Project structure
+## Project Structure
 
 ```
 src/
-  app/                  # Next.js routes
-  components/           # UI and layout components
+  app/                  # Next.js routes (/flagged, /flagged/[id], /trends, /reviews)
+    flagged/            # Flagged queue table, tabs, and detail pages
+      actions.ts        # Server actions for review resolution
+  components/           # UI, layout, and flagged queue components
   lib/
     supabase/           # Supabase client wrappers
     types/              # Shared schema TypeScript types
     constants/          # Enum value lists
     utils/              # ID generation helpers
-    queries/            # Read-only data access helpers
+    queries/            # Data access queries & mutations (reviews, bookings, listings)
 ```
 
 ## Scripts
