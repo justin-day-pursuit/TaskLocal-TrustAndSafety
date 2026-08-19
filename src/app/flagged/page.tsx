@@ -1,21 +1,28 @@
-import { DataTable } from "@/components/ui/DataTable";
+import { FlaggedQueueTable } from "@/components/flagged/FlaggedQueueTable";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { getFlaggedReviews } from "@/lib/queries/reviews";
+import { getBookingsByIds } from "@/lib/queries/bookings";
+import {
+  computeRepeatFlagCounts,
+  getFlaggedReviews,
+} from "@/lib/queries/reviews";
 
 export const dynamic = "force-dynamic";
 
 export default async function FlaggedPage() {
   const { data, error } = await getFlaggedReviews();
 
-  const rows =
-    data?.map((review) => [
-      review.id,
-      review.bookingId,
-      review.reviewerRole,
-      review.rating,
-      review.reason || "—",
-      review.handled ? "Yes" : "No",
-    ]) ?? [];
+  let repeatFlagCounts = {};
+  let bookingsError: string | null = null;
+
+  if (data && data.length > 0) {
+    const bookingIds = [...new Set(data.map((review) => review.bookingId))];
+    const bookingsResult = await getBookingsByIds(bookingIds);
+    bookingsError = bookingsResult.error;
+
+    if (bookingsResult.data) {
+      repeatFlagCounts = computeRepeatFlagCounts(data, bookingsResult.data);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -24,23 +31,18 @@ export default async function FlaggedPage() {
           Flagged Reviews
         </h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Reviews flagged for trust and safety issues, newest first.
+          Open flagged reviews, oldest first. Higher open-flag counts indicate
+          repeat issues against the same party.
         </p>
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}
+      {!error && bookingsError ? <ErrorBanner message={bookingsError} /> : null}
 
-      {!error ? (
-        <DataTable
-          columns={[
-            "Review ID",
-            "Booking ID",
-            "Reviewer",
-            "Rating",
-            "Reason",
-            "Handled",
-          ]}
-          rows={rows}
+      {!error && !bookingsError ? (
+        <FlaggedQueueTable
+          reviews={data ?? []}
+          repeatFlagCounts={repeatFlagCounts}
           emptyMessage="No flagged reviews found."
         />
       ) : null}
