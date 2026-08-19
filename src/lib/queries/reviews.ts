@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { getBookingsByIds } from "@/lib/queries/bookings";
-import type { Booking, Review, ReviewerRole } from "@/lib/types/database";
+import { getListingById } from "@/lib/queries/listings";
+import type { Booking, Listing, Review, ReviewerRole } from "@/lib/types/database";
 
 export interface ReviewStats {
   total: number;
@@ -223,6 +224,73 @@ export async function getReviewStats(): Promise<{
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to load review stats";
+    return { data: null, error: message };
+  }
+}
+
+export interface ReviewDetail {
+  review: Review;
+  booking: Booking | null;
+  listing: Listing | null;
+}
+
+export async function getReviewDetail(reviewId: string): Promise<{
+  data: ReviewDetail | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = createServerClient();
+    const { data: review, error: reviewError } = await supabase
+      .from("Review")
+      .select("*")
+      .eq("id", reviewId)
+      .maybeSingle();
+
+    if (reviewError) {
+      return { data: null, error: reviewError.message };
+    }
+
+    if (!review) {
+      return { data: null, error: null };
+    }
+
+    const typedReview = review as Review;
+    const { data: booking, error: bookingError } = await supabase
+      .from("Booking")
+      .select("*")
+      .eq("id", typedReview.bookingId)
+      .maybeSingle();
+
+    if (bookingError) {
+      return { data: null, error: bookingError.message };
+    }
+
+    const typedBooking = (booking as Booking | null) ?? null;
+    let listing: Listing | null = null;
+
+    if (typedBooking) {
+      const { data: listingData, error: listingError } = await getListingById(
+        typedBooking.listingId
+      );
+
+      if (listingError) {
+        return { data: null, error: listingError };
+      }
+
+      listing = listingData;
+    }
+
+    return {
+      data: {
+        review: typedReview,
+        booking: typedBooking,
+        listing,
+      },
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to load review detail";
     return { data: null, error: message };
   }
 }
