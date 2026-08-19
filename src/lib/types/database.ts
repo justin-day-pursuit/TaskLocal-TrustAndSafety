@@ -55,6 +55,8 @@ export interface Booking {
   providerId: string;
   status: BookingStatus;
   priceAtBooking: number;
+  requestedAt: string;
+  serviceDate: string | null;
 }
 
 export interface Review {
