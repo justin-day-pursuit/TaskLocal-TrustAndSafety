@@ -1,0 +1,2 @@
+# Handoff documents are written here as <task-id>__<from-agent>__<to-agent>.md
+# See .cursor/ORCHESTRATION_ARCHITECTURE.md Section 7 for the schema.
