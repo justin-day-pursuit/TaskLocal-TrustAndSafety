@@ -294,3 +294,28 @@ export async function getReviewDetail(reviewId: string): Promise<{
     return { data: null, error: message };
   }
 }
+
+export async function resolveReview(id: string): Promise<{
+  data: Review | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from("Review")
+      .update({ handled: true })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    return { data: data as Review | null, error: null };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to resolve review";
+    return { data: null, error: message };
+  }
+}
