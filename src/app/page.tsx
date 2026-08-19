@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { StatCard } from "@/components/ui/StatCard";
@@ -56,11 +58,22 @@ export default async function DashboardPage() {
       </section>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
-        <h3 className="text-lg font-medium text-zinc-900">Coming next</h3>
+        <h3 className="text-lg font-medium text-zinc-900">Moderation workflow</h3>
+        <p className="mt-2 text-sm text-zinc-600">
+          Use the flagged queue to triage open reports, review booking and
+          listing context, and resolve items when reviewed.
+        </p>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-          <li>Flagged booking drill-down with booking and provider context</li>
-          <li>Trend charts for flags, review volume, and sentiment</li>
-          <li>Natural language themes from reciprocal review comments</li>
+          <li>
+            <Link href="/flagged" className="font-medium text-zinc-900 underline-offset-2 hover:underline">
+              Flagged queue
+            </Link>{" "}
+            — oldest unresolved flags first, with repeat-flag counts
+          </li>
+          <li>
+            Review detail — full review, booking, and listing context before
+            resolving
+          </li>
         </ul>
       </section>
     </div>
