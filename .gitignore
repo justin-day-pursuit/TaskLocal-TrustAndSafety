@@ -42,5 +42,4 @@ yarn-error.log*
 next-env.d.ts
 
 # cursor local config
-.cursor/agents
-.cursor/skills
+.cursor/
