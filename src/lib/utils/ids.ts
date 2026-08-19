@@ -10,10 +10,12 @@ const PREFIXES: Record<Lowercase<TableName>, string> = {
 
 export type IdEntity = keyof typeof PREFIXES;
 
-function randomSuffix(length = 3): string {
-  const max = 10 ** length;
-  const value = Math.floor(Math.random() * max);
-  return value.toString().padStart(length, "0");
+function randomSuffix(length = 8): string {
+  const bytes = new Uint8Array(Math.ceil(length / 2));
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, length);
 }
 
 export function generateId(entity: IdEntity): string {

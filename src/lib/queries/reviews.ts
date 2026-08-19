@@ -37,17 +37,33 @@ export async function getReviewStats(): Promise<{
 }> {
   try {
     const supabase = createServerClient();
-    const { data, error } = await supabase.from("Review").select("flag, handled");
+    const [totalResult, flaggedResult, unhandledResult] = await Promise.all([
+      supabase.from("Review").select("*", { count: "exact", head: true }),
+      supabase
+        .from("Review")
+        .select("*", { count: "exact", head: true })
+        .eq("flag", true),
+      supabase
+        .from("Review")
+        .select("*", { count: "exact", head: true })
+        .eq("flag", true)
+        .eq("handled", false),
+    ]);
+
+    const error =
+      totalResult.error?.message ??
+      flaggedResult.error?.message ??
+      unhandledResult.error?.message ??
+      null;
 
     if (error) {
-      return { data: null, error: error.message };
+      return { data: null, error };
     }
 
-    const reviews = data ?? [];
     const stats: ReviewStats = {
-      total: reviews.length,
-      flagged: reviews.filter((review) => review.flag).length,
-      unhandled: reviews.filter((review) => review.flag && !review.handled).length,
+      total: totalResult.count ?? 0,
+      flagged: flaggedResult.count ?? 0,
+      unhandled: unhandledResult.count ?? 0,
     };
 
     return { data: stats, error: null };

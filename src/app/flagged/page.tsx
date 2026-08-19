@@ -30,18 +30,20 @@ export default async function FlaggedPage() {
 
       {error ? <ErrorBanner message={error} /> : null}
 
-      <DataTable
-        columns={[
-          "Review ID",
-          "Booking ID",
-          "Reviewer",
-          "Rating",
-          "Reason",
-          "Handled",
-        ]}
-        rows={rows}
-        emptyMessage="No flagged reviews found."
-      />
+      {!error ? (
+        <DataTable
+          columns={[
+            "Review ID",
+            "Booking ID",
+            "Reviewer",
+            "Rating",
+            "Reason",
+            "Handled",
+          ]}
+          rows={rows}
+          emptyMessage="No flagged reviews found."
+        />
+      ) : null}
     </div>
   );
 }
