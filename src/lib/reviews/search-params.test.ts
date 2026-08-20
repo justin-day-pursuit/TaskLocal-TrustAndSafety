@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildActionNeededDetailHref,
+  buildActionNeededHref,
   mergeReviewsCatalogParams,
   parseActionNeededListParams,
   parseReviewsCatalogParams,
@@ -174,5 +176,32 @@ describe("action-needed list params", () => {
     );
 
     expect(roundTrip).toEqual(parsed);
+  });
+});
+
+describe("buildActionNeededHref", () => {
+  it("returns bare path when params are defaults", () => {
+    expect(
+      buildActionNeededHref(parseActionNeededListParams({}))
+    ).toBe("/action-needed");
+  });
+
+  it("preserves role and page in the list redirectTo path", () => {
+    expect(
+      buildActionNeededHref(
+        parseActionNeededListParams({ role: "customer", page: "2" })
+      )
+    ).toBe("/action-needed?role=customer&page=2");
+  });
+});
+
+describe("buildActionNeededDetailHref", () => {
+  it("carries list search params on the detail URL", () => {
+    expect(
+      buildActionNeededDetailHref(
+        "rev_abc",
+        parseActionNeededListParams({ role: "customer", page: "2" })
+      )
+    ).toBe("/action-needed/rev_abc?role=customer&page=2");
   });
 });

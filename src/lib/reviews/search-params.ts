@@ -296,3 +296,24 @@ export function serializeActionNeededListParams(
 
   return parts.join("&");
 }
+
+/** Full list path including non-default search params (for links and redirectTo). */
+export function buildActionNeededHref(params: ActionNeededListParams): string {
+  const qs = serializeActionNeededListParams(params);
+  return qs ? `/action-needed?${qs}` : "/action-needed";
+}
+
+/** Detail path carrying list query params so resolve/back can return to the same view. */
+export function buildActionNeededDetailHref(
+  reviewId: string,
+  listParams?: ActionNeededListParams
+): string {
+  if (!listParams) {
+    return `/action-needed/${reviewId}`;
+  }
+
+  const qs = serializeActionNeededListParams(listParams);
+  return qs
+    ? `/action-needed/${reviewId}?${qs}`
+    : `/action-needed/${reviewId}`;
+}
