@@ -117,6 +117,30 @@ describe("serializeReviewsCatalogParams", () => {
 
     expect(roundTrip).toEqual(parsed);
   });
+
+  it("round-trips every PRD §7 param including booking-side filters", () => {
+    const parsed = parseReviewsCatalogParams({
+      qReview: "rev_abc",
+      qBooking: "bkg_1",
+      reviewerRole: "provider",
+      flag: "false",
+      handled: "true",
+      bookingStatus: "confirmed",
+      sort: "serviceDate",
+      dir: "asc",
+      createdWithin: "year",
+      createdMonth: "6",
+      page: "2",
+      pageSize: "50",
+      expanded: "rev_open",
+    });
+
+    const roundTrip = parseReviewsCatalogParams(
+      Object.fromEntries(new URLSearchParams(serializeReviewsCatalogParams(parsed)))
+    );
+
+    expect(roundTrip).toEqual(parsed);
+  });
 });
 
 describe("mergeReviewsCatalogParams", () => {
