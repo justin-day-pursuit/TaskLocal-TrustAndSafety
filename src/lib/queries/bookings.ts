@@ -1,3 +1,4 @@
+import { buildIlikeOrFilter } from "@/lib/postgrest/ilike-or-filter";
 import { createServerClient } from "@/lib/supabase/server";
 import { POSTGREST_MAX_ROWS } from "@/lib/reviews/date-filters";
 import type { ReviewSortField, SortDirection } from "@/lib/reviews/search-params";
@@ -19,10 +20,6 @@ export interface BookingQueryResult {
   totalFetched: number;
 }
 
-function escapeIlikePattern(value: string): string {
-  return value.replace(/[%_\\]/g, (char) => `\\${char}`);
-}
-
 export async function queryBookingsForReviewCatalog(
   options: BookingQueryOptions
 ): Promise<BookingQueryResult> {
@@ -33,14 +30,11 @@ export async function queryBookingsForReviewCatalog(
     let query = supabase.from("Booking").select("*");
 
     if (options.qBooking) {
-      const pattern = `%${escapeIlikePattern(options.qBooking)}%`;
       query = query.or(
-        [
-          `id.ilike.${pattern}`,
-          `listingId.ilike.${pattern}`,
-          `customerId.ilike.${pattern}`,
-          `providerId.ilike.${pattern}`,
-        ].join(",")
+        buildIlikeOrFilter(
+          ["id", "listingId", "customerId", "providerId"],
+          options.qBooking
+        )
       );
     }
 

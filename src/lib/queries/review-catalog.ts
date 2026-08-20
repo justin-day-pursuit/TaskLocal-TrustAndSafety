@@ -20,6 +20,7 @@ import {
   type PageSize,
   type ReviewsCatalogParams,
 } from "@/lib/reviews/search-params";
+import { buildIlikeOrFilter } from "@/lib/postgrest/ilike-or-filter";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Booking, Review, ReviewerRole } from "@/lib/types/database";
 
@@ -35,10 +36,6 @@ export interface PaginatedReviewListResult {
   error: string | null;
 }
 
-function escapeIlikePattern(value: string): string {
-  return value.replace(/[%_\\]/g, (char) => `\\${char}`);
-}
-
 function buildReviewCatalogQuery(
   params: ReviewsCatalogParams,
   selectOptions?: { count?: "exact" | "planned" | "estimated"; head?: boolean }
@@ -47,8 +44,9 @@ function buildReviewCatalogQuery(
   let query = supabase.from("Review").select("*", selectOptions);
 
   if (params.qReview) {
-    const pattern = `%${escapeIlikePattern(params.qReview)}%`;
-    query = query.or(`id.ilike.${pattern},bookingId.ilike.${pattern}`);
+    query = query.or(
+      buildIlikeOrFilter(["id", "bookingId"], params.qReview)
+    );
   }
 
   if (params.reviewerRole !== "all") {
