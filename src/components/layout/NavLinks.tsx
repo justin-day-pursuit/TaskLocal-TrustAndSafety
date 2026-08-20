@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { href: "/trends", label: "Trends" },
 ];
 
-function isNavActive(pathname: string, href: string): boolean {
+export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/") {
     return pathname === "/";
   }
