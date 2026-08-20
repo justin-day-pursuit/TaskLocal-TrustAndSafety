@@ -6,10 +6,8 @@ import {
 } from "@/components/flagged/ReviewerRoleTabs";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { getBookingsByIds } from "@/lib/queries/bookings";
-import {
-  computeRepeatFlagCounts,
-  getFlaggedReviews,
-} from "@/lib/queries/reviews";
+import { getFlaggedReviews } from "@/lib/queries/reviews";
+import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentation";
 
 export const dynamic = "force-dynamic";
 
@@ -24,18 +22,15 @@ export default async function FlaggedPage({ searchParams }: FlaggedPageProps) {
 
   const { data, error } = await getFlaggedReviews(reviewerRole);
 
-  let repeatFlagCounts = {};
-  let bookingsError: string | null = null;
+  let bookingsResult: Awaited<ReturnType<typeof getBookingsByIds>> | null =
+    null;
 
   if (data && data.length > 0) {
     const bookingIds = [...new Set(data.map((review) => review.bookingId))];
-    const bookingsResult = await getBookingsByIds(bookingIds);
-    bookingsError = bookingsResult.error;
-
-    if (bookingsResult.data) {
-      repeatFlagCounts = computeRepeatFlagCounts(data, bookingsResult.data);
-    }
+    bookingsResult = await getBookingsByIds(bookingIds);
   }
+
+  const presentation = buildReviewListPresentation(data, error, bookingsResult);
 
   return (
     <div className="space-y-6">
@@ -52,13 +47,17 @@ export default async function FlaggedPage({ searchParams }: FlaggedPageProps) {
         <ReviewerRoleTabs active={roleFilter} />
       </div>
 
-      {error ? <ErrorBanner message={error} /> : null}
-      {!error && bookingsError ? <ErrorBanner message={bookingsError} /> : null}
+      {presentation.primaryError ? (
+        <ErrorBanner message={presentation.primaryError} />
+      ) : null}
+      {presentation.enrichmentError ? (
+        <ErrorBanner message={presentation.enrichmentError} />
+      ) : null}
 
-      {!error && !bookingsError ? (
+      {presentation.showReviewList ? (
         <FlaggedQueueTable
           reviews={data ?? []}
-          repeatFlagCounts={repeatFlagCounts}
+          repeatFlagCounts={presentation.repeatFlagCounts}
           emptyMessage="No flagged reviews found."
         />
       ) : null}
