@@ -15,6 +15,6 @@ export async function resolveReviewAction(reviewId: string) {
     return { error: "Review not found or already resolved." };
   }
 
-  revalidatePath("/flagged");
-  revalidatePath(`/flagged/${reviewId}`);
+  revalidatePath("/action-needed");
+  revalidatePath(`/action-needed/${reviewId}`);
 }

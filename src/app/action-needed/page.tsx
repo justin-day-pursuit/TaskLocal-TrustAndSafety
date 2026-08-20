@@ -11,11 +11,13 @@ import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentatio
 
 export const dynamic = "force-dynamic";
 
-interface FlaggedPageProps {
+interface ActionNeededPageProps {
   searchParams: Promise<{ role?: string | string[] }>;
 }
 
-export default async function FlaggedPage({ searchParams }: FlaggedPageProps) {
+export default async function ActionNeededPage({
+  searchParams,
+}: ActionNeededPageProps) {
   const params = await searchParams;
   const roleFilter = parseReviewerRoleFilter(params.role);
   const reviewerRole = reviewerRoleFromFilter(roleFilter);
@@ -37,11 +39,10 @@ export default async function FlaggedPage({ searchParams }: FlaggedPageProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-zinc-900">
-            Flagged Reviews
+            Action needed
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Open flagged reviews, oldest first. Higher open-flag counts indicate
-            repeat issues against the same party.
+            open flagged reviews waiting to be resolved, oldest first
           </p>
         </div>
         <ReviewerRoleTabs active={roleFilter} />

@@ -87,7 +87,7 @@ export default async function FlaggedDetailPage({
             <ResolveButton
               reviewId={review.id}
               label="Resolve"
-              redirectTo="/flagged"
+              redirectTo="/action-needed"
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
             />
           ) : (
@@ -168,7 +168,7 @@ export default async function FlaggedDetailPage({
 function BackLink() {
   return (
     <Link
-      href="/flagged"
+      href="/action-needed"
       className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
     >
       ← Back to queue

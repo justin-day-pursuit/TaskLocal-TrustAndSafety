@@ -4,7 +4,7 @@ export default function FlaggedReviewNotFound() {
   return (
     <div className="space-y-4">
       <Link
-        href="/flagged"
+        href="/action-needed"
         className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
       >
         ← Back to queue
