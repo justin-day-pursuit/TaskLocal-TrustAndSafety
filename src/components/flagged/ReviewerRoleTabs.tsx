@@ -24,7 +24,7 @@ export function ReviewerRoleTabs({ active }: ReviewerRoleTabsProps) {
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         const href =
-          tab.id === "all" ? "/flagged" : `/flagged?role=${tab.id}`;
+          tab.id === "all" ? "/action-needed" : `/action-needed?role=${tab.id}`;
 
         return (
           <Link

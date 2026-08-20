@@ -68,7 +68,7 @@ export function FlaggedQueueTable({
             <tr key={review.id} className="hover:bg-zinc-50">
               <td className="px-4 py-3">
                 <Link
-                  href={`/flagged/${review.id}`}
+                  href={`/action-needed/${review.id}`}
                   className="font-medium text-zinc-900 underline-offset-2 hover:underline"
                 >
                   {review.id.slice(0, 8)}…

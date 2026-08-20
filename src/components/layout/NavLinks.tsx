@@ -5,10 +5,18 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
-  { href: "/flagged", label: "Flagged Reviews" },
+  { href: "/action-needed", label: "Action needed" },
+  { href: "/reviews", label: "Reviews" },
   { href: "/trends", label: "Trends" },
-  { href: "/reviews", label: "Review Themes" },
 ];
+
+function isNavActive(pathname: string, href: string): boolean {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function NavLinks() {
   const pathname = usePathname();
@@ -16,7 +24,7 @@ export function NavLinks() {
   return (
     <nav className="flex flex-col gap-1">
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname === item.href;
+        const isActive = isNavActive(pathname, item.href);
 
         return (
           <Link

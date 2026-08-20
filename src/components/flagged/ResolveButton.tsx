@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { resolveReviewAction } from "@/app/flagged/actions";
+import { resolveReviewAction } from "@/app/action-needed/actions";
 
 interface ResolveButtonProps {
   reviewId: string;
