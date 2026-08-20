@@ -9,6 +9,7 @@ import {
 import { PaginationBar } from "@/components/reviews/PaginationBar";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { getFlaggedReviewsPaginated } from "@/lib/queries/review-catalog";
+import { resolveExpandedReviewId } from "@/lib/reviews/expanded-param";
 import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentation";
 import {
   DEFAULT_PAGE,
@@ -69,6 +70,10 @@ export default async function ActionNeededPage({
       ? null
       : { data: result.bookings, error: result.bookingsError }
   );
+  const expandedReviewId = resolveExpandedReviewId(
+    result.reviews,
+    listParams.expanded
+  );
 
   const showPageReset =
     listParams.page > DEFAULT_PAGE &&
@@ -126,7 +131,11 @@ export default async function ActionNeededPage({
         <div className="space-y-4">
           <FlaggedQueueTable
             reviews={result.reviews}
+            bookings={result.bookings}
+            bookingsError={presentation.enrichmentError}
             repeatFlagCounts={presentation.repeatFlagCounts}
+            listParams={listParams}
+            expandedReviewId={expandedReviewId}
             emptyMessage="No flagged reviews found."
           />
           <PaginationBar

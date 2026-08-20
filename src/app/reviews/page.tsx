@@ -9,6 +9,7 @@ import { PostgrestCapNote } from "@/components/reviews/PostgrestCapNote";
 import { ReviewsCatalogTable } from "@/components/reviews/ReviewsCatalogTable";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { getReviewCatalog } from "@/lib/queries/review-catalog";
+import { resolveExpandedReviewId } from "@/lib/reviews/expanded-param";
 import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentation";
 import {
   DEFAULT_PAGE,
@@ -43,6 +44,10 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     catalog.error
       ? null
       : { data: catalog.bookings, error: catalog.bookingsError }
+  );
+  const expandedReviewId = resolveExpandedReviewId(
+    catalog.reviews,
+    catalogParams.expanded
   );
 
   const showCapNote =
@@ -102,7 +107,13 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
 
       {presentation.showReviewList ? (
         <div className="space-y-4">
-          <ReviewsCatalogTable reviews={catalog.reviews} />
+          <ReviewsCatalogTable
+            reviews={catalog.reviews}
+            bookings={catalog.bookings}
+            bookingsError={presentation.enrichmentError}
+            listParams={catalogParams}
+            expandedReviewId={expandedReviewId}
+          />
           <PaginationBar
             page={catalog.page}
             pageSize={catalog.pageSize}
