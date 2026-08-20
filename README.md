@@ -4,20 +4,20 @@ Internal moderation dashboard for the TaskLocal Trust & Safety product (Product 
 
 > **Scope Note**: This repository covers **Product D (Trust & Safety Dashboard)** only. Marketplace products A (Provider), B (Customer), and C (Chatbot) are handled in separate services.
 
-## Working MVP Features
+## Working features
 
-This repo was built from initial scaffolding into a fully working Trust & Safety moderation dashboard MVP:
+Moderation dashboard for Product D, including the Reviews Console slice (shipped on `main` via [#8](https://github.com/justin-day-pursuit/TaskLocal-TrustAndSafety/pull/8)):
 
-- **Overview Dashboard (`/`)**: Displays live review stats (total reviews, flagged reviews, unhandled flags) alongside live database connection status.
-- **Flagged Queue (`/flagged`)**: Displays open, unhandled review flags (`handled = false`) sorted oldest-first by creation timestamp.
-  - **Reviewer Role Filter**: Tabs to filter queue by `All`, `Customer` (reviews written by customers), or `Provider` (reviews written by providers).
-  - **Repeat-Flag Badge**: Calculates and displays the total count of open flags against the reviewed party (provider or customer) to surface repeat issues.
-- **Review Detail (`/flagged/[id]`)**: Comprehensive detail view assembling the full database relation chain (`Review` → `Booking` → `Listing`) to provide full context before resolving issues.
-- **Resolve Action**: Inline button on queue rows and detail page executing the `resolveReview` mutation to mark flags as handled (`handled = true`) and revalidate views.
+- **Overview Dashboard (`/`)**: Live review stats (total, flagged, unhandled) plus connection status. Stat cards link to `/reviews`, `/reviews?flag=true`, and `/action-needed`.
+- **Action needed (`/action-needed`)**: Open, unhandled review flags (`flag = true`, `handled = false`), oldest-first. Role tabs (All / Customer / Provider), repeat-flag badges, inline Resolve, click-to-expand Review + Booking, pagination. Detail at `/action-needed/[id]`. `/flagged` and `/flagged/:id` permanently redirect here (308).
+- **Reviews catalog (`/reviews`)**: All reviews with search, filter, sort, date windows (UTC), and pagination. Expandable Review + Booking rows. No inline Resolve; flagged+unhandled rows can link to Action needed.
+- **Resolve**: Sets `handled = true` only. List/panel Resolve keeps the current query string; detail returns to the queue URL including `role`/`page`. Booking fetch failures show a banner and still render the review list.
 
-### Non-MVP Placeholders
-- **`/trends`**: Placeholder page for future flag trends, review volume, and sentiment analytics.
-- **`/reviews`**: Placeholder page for future natural language processing (NLP) and theme extraction on reciprocal review comments.
+Spec: [docs/PRD.md](docs/PRD.md).
+
+### Placeholders
+- **`/trends`**: Future flag trends, review volume, and sentiment analytics.
+- **NLP / review themes**: Parked. `/reviews` is the all-reviews catalog, not an NLP page.
 
 ## Setup
 
@@ -59,16 +59,17 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```
 src/
-  app/                  # Next.js routes (/flagged, /flagged/[id], /trends, /reviews)
-    flagged/            # Flagged queue table, tabs, and detail pages
-      actions.ts        # Server actions for review resolution
-  components/           # UI, layout, and flagged queue components
+  app/                  # Next.js routes (/action-needed, /reviews, /trends)
+    action-needed/      # Queue table, tabs, detail, resolve action
+    reviews/            # All-reviews catalog
+  components/           # UI, layout, queue, and catalog components
   lib/
     supabase/           # Supabase client wrappers
     types/              # Shared schema TypeScript types
     constants/          # Enum value lists
     utils/              # ID generation helpers
     queries/            # Data access queries & mutations (reviews, bookings, listings)
+    reviews/            # URL params, dates, pagination, list presentation
 ```
 
 ## Scripts
