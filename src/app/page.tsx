@@ -44,31 +44,46 @@ export default async function DashboardPage() {
           label="Total Reviews"
           value={statsResult.data?.total ?? "—"}
           description="All reviews in the shared database"
+          href="/reviews"
         />
         <StatCard
           label="Flagged Reviews"
           value={statsResult.data?.flagged ?? "—"}
           description="Reviews marked with an issue"
+          href="/reviews?flag=true"
         />
         <StatCard
           label="Unhandled Flags"
           value={statsResult.data?.unhandled ?? "—"}
           description="Flagged reviews not yet resolved"
+          href="/action-needed"
         />
       </section>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
         <h3 className="text-lg font-medium text-zinc-900">Moderation workflow</h3>
         <p className="mt-2 text-sm text-zinc-600">
-          Use the flagged queue to triage open reports, review booking and
+          Use the Action needed queue to triage open reports, review booking and
           listing context, and resolve items when reviewed.
         </p>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-zinc-600">
           <li>
-            <Link href="/flagged" className="font-medium text-zinc-900 underline-offset-2 hover:underline">
-              Flagged queue
+            <Link
+              href="/action-needed"
+              className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+            >
+              Action needed queue
             </Link>{" "}
             — oldest unresolved flags first, with repeat-flag counts
+          </li>
+          <li>
+            <Link
+              href="/reviews"
+              className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+            >
+              Reviews catalog
+            </Link>{" "}
+            — browse and filter all reviews, including flagged items
           </li>
           <li>
             Review detail — full review, booking, and listing context before

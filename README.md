@@ -77,3 +77,4 @@ src/
 - `npm run build` — production build
 - `npm run start` — run production server
 - `npm run lint` — ESLint
+- `npm test` — run offline unit tests (Vitest; no Supabase or `.env.local` required)

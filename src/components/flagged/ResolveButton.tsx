@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { resolveReviewAction } from "@/app/flagged/actions";
+import { resolveReviewAction } from "@/app/action-needed/actions";
 
 interface ResolveButtonProps {
   reviewId: string;
@@ -21,7 +21,8 @@ export function ResolveButton({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  function handleClick() {
+  function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
     startTransition(async () => {
       const result = await resolveReviewAction(reviewId);
 

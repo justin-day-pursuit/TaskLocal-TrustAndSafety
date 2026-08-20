@@ -1,11 +1,17 @@
 import Link from "next/link";
 
+import {
+  DEFAULT_PAGE,
+  serializeActionNeededListParams,
+  type ActionNeededListParams,
+} from "@/lib/reviews/search-params";
 import type { ReviewerRole } from "@/lib/types/database";
 
 export type ReviewerRoleFilter = "all" | ReviewerRole;
 
 interface ReviewerRoleTabsProps {
   active: ReviewerRoleFilter;
+  listParams?: ActionNeededListParams;
 }
 
 const tabs: { id: ReviewerRoleFilter; label: string }[] = [
@@ -14,7 +20,21 @@ const tabs: { id: ReviewerRoleFilter; label: string }[] = [
   { id: "provider", label: "About customers" },
 ];
 
-export function ReviewerRoleTabs({ active }: ReviewerRoleTabsProps) {
+function hrefForRole(
+  role: ReviewerRoleFilter,
+  listParams?: ActionNeededListParams
+): string {
+  const params: ActionNeededListParams = {
+    role,
+    page: DEFAULT_PAGE,
+    pageSize: listParams?.pageSize ?? 25,
+    expanded: listParams?.expanded,
+  };
+  const qs = serializeActionNeededListParams(params);
+  return qs ? `/action-needed?${qs}` : "/action-needed";
+}
+
+export function ReviewerRoleTabs({ active, listParams }: ReviewerRoleTabsProps) {
   return (
     <div
       className="inline-flex rounded-lg border border-zinc-200 bg-zinc-100 p-1"
@@ -23,8 +43,7 @@ export function ReviewerRoleTabs({ active }: ReviewerRoleTabsProps) {
     >
       {tabs.map((tab) => {
         const isActive = tab.id === active;
-        const href =
-          tab.id === "all" ? "/flagged" : `/flagged?role=${tab.id}`;
+        const href = hrefForRole(tab.id, listParams);
 
         return (
           <Link
