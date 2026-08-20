@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ResolveButton } from "@/components/flagged/ResolveButton";
+import {
+  buildActionNeededDetailHref,
+  type ActionNeededListParams,
+} from "@/lib/reviews/search-params";
 import type { Booking, Review } from "@/lib/types/database";
 
 export type ReviewExpandPanelVariant = "action-needed" | "reviews";
@@ -13,6 +17,7 @@ interface ReviewExpandPanelProps {
   booking: Booking | null;
   bookingsError?: string | null;
   variant: ReviewExpandPanelVariant;
+  listParams?: ActionNeededListParams;
 }
 
 function DetailField({
@@ -65,6 +70,7 @@ export function ReviewExpandPanel({
   booking,
   bookingsError,
   variant,
+  listParams,
 }: ReviewExpandPanelProps) {
   const [bookingVisible, setBookingVisible] = useState(true);
   const needsAction = review.flag && !review.handled;
@@ -84,7 +90,7 @@ export function ReviewExpandPanel({
             <>
               <ResolveButton reviewId={review.id} />
               <Link
-                href={`/action-needed/${review.id}`}
+                href={buildActionNeededDetailHref(review.id, listParams)}
                 className="text-sm font-medium text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline"
               >
                 Open full page

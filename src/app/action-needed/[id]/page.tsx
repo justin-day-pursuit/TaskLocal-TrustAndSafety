@@ -8,11 +8,16 @@ import {
   getRepeatFlagCountForReview,
   getReviewDetail,
 } from "@/lib/queries/reviews";
+import {
+  buildActionNeededHref,
+  parseActionNeededListParams,
+} from "@/lib/reviews/search-params";
 
 export const dynamic = "force-dynamic";
 
 interface FlaggedDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 function formatDateTime(iso: string): string {
@@ -44,14 +49,21 @@ function DetailField({
 
 export default async function FlaggedDetailPage({
   params,
+  searchParams,
 }: FlaggedDetailPageProps) {
   const { id } = await params;
+  const rawParams = await searchParams;
+  const listParams = parseActionNeededListParams(rawParams);
+  const queueHref = buildActionNeededHref({
+    ...listParams,
+    expanded: undefined,
+  });
   const { data, error } = await getReviewDetail(id);
 
   if (error) {
     return (
       <div className="space-y-6">
-        <BackLink />
+        <BackLink href={queueHref} />
         <ErrorBanner message={error} />
       </div>
     );
@@ -68,7 +80,7 @@ export default async function FlaggedDetailPage({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <BackLink />
+          <BackLink href={queueHref} />
           <h2 className="mt-4 text-2xl font-semibold text-zinc-900">
             Review detail
           </h2>
@@ -87,7 +99,7 @@ export default async function FlaggedDetailPage({
             <ResolveButton
               reviewId={review.id}
               label="Resolve"
-              redirectTo="/action-needed"
+              redirectTo={queueHref}
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
             />
           ) : (
@@ -165,10 +177,10 @@ export default async function FlaggedDetailPage({
   );
 }
 
-function BackLink() {
+function BackLink({ href }: { href: string }) {
   return (
     <Link
-      href="/action-needed"
+      href={href}
       className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
     >
       ← Back to queue

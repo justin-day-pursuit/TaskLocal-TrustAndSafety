@@ -12,9 +12,9 @@ import { getFlaggedReviewsPaginated } from "@/lib/queries/review-catalog";
 import { resolveExpandedReviewId } from "@/lib/reviews/expanded-param";
 import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentation";
 import {
+  buildActionNeededHref,
   DEFAULT_PAGE,
   parseActionNeededListParams,
-  serializeActionNeededListParams,
   type ActionNeededListParams,
   type PageSize,
 } from "@/lib/reviews/search-params";
@@ -23,11 +23,6 @@ export const dynamic = "force-dynamic";
 
 interface ActionNeededPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function actionNeededHref(params: ActionNeededListParams): string {
-  const qs = serializeActionNeededListParams(params);
-  return qs ? `/action-needed?${qs}` : "/action-needed";
 }
 
 function mergeActionNeededListParams(
@@ -57,7 +52,7 @@ export default async function ActionNeededPage({
 
   if (result.totalCount > 0 && result.page !== listParams.page) {
     redirect(
-      actionNeededHref(
+      buildActionNeededHref(
         mergeActionNeededListParams(listParams, { page: result.page })
       )
     );
@@ -81,11 +76,13 @@ export default async function ActionNeededPage({
     !result.error;
 
   function hrefForPage(page: number): string {
-    return actionNeededHref(mergeActionNeededListParams(listParams, { page }));
+    return buildActionNeededHref(
+      mergeActionNeededListParams(listParams, { page })
+    );
   }
 
   function hrefForPageSize(pageSize: PageSize): string {
-    return actionNeededHref(
+    return buildActionNeededHref(
       mergeActionNeededListParams(listParams, {
         page: DEFAULT_PAGE,
         pageSize,

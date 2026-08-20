@@ -11,7 +11,10 @@ import {
 import { ReviewExpandPanel } from "@/components/reviews/ReviewExpandPanel";
 import type { RepeatFlagCounts } from "@/lib/queries/reviews";
 import { indexBookingsById } from "@/lib/reviews/bookings-by-id";
-import type { ActionNeededListParams } from "@/lib/reviews/search-params";
+import {
+  buildActionNeededDetailHref,
+  type ActionNeededListParams,
+} from "@/lib/reviews/search-params";
 import type { Booking, Review } from "@/lib/types/database";
 
 interface FlaggedQueueTableProps {
@@ -104,13 +107,14 @@ export function FlaggedQueueTable({
                     booking={bookingsById.get(review.bookingId) ?? null}
                     bookingsError={bookingsError}
                     variant="action-needed"
+                    listParams={listParams}
                   />
                 }
                 summaryCells={
                   <>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/action-needed/${review.id}`}
+                        href={buildActionNeededDetailHref(review.id, listParams)}
                         onClick={(event) => event.stopPropagation()}
                         className="font-medium text-zinc-900 underline-offset-2 hover:underline"
                       >
