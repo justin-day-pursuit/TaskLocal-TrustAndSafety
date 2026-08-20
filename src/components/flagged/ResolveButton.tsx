@@ -21,7 +21,8 @@ export function ResolveButton({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  function handleClick() {
+  function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
     startTransition(async () => {
       const result = await resolveReviewAction(reviewId);
 
