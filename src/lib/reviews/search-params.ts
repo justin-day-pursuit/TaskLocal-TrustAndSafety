@@ -236,6 +236,11 @@ export function serializeReviewsCatalogParams(
   return parts.join("&");
 }
 
+export function reviewsHref(params: ReviewsCatalogParams): string {
+  const qs = serializeReviewsCatalogParams(params);
+  return qs ? `/reviews?${qs}` : "/reviews";
+}
+
 export function mergeReviewsCatalogParams(
   current: ReviewsCatalogParams,
   updates: Partial<ReviewsCatalogParams>

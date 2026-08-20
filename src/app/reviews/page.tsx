@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
 
-import {
-  reviewsHref,
-  ReviewsCatalogControls,
-} from "@/components/reviews/ReviewsCatalogControls";
+import { ReviewsCatalogControls } from "@/components/reviews/ReviewsCatalogControls";
 import { PaginationBar } from "@/components/reviews/PaginationBar";
 import { PostgrestCapNote } from "@/components/reviews/PostgrestCapNote";
 import { ReviewsCatalogTable } from "@/components/reviews/ReviewsCatalogTable";
@@ -16,6 +13,7 @@ import {
   mergeReviewsCatalogParams,
   parseReviewsCatalogParams,
   requiresBookingFirstQuery,
+  reviewsHref,
   type PageSize,
 } from "@/lib/reviews/search-params";
 

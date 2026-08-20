@@ -12,7 +12,7 @@ import {
   DEFAULT_SORT,
   SORT_FIELDS,
   mergeReviewsCatalogParams,
-  serializeReviewsCatalogParams,
+  reviewsHref,
   type ReviewsCatalogParams,
   type ReviewSortField,
   type SortDirection,
@@ -20,11 +20,6 @@ import {
 
 interface ReviewsCatalogControlsProps {
   params: ReviewsCatalogParams;
-}
-
-function reviewsHref(params: ReviewsCatalogParams): string {
-  const qs = serializeReviewsCatalogParams(params);
-  return qs ? `/reviews?${qs}` : "/reviews";
 }
 
 function navigate(router: ReturnType<typeof useRouter>, next: ReviewsCatalogParams) {
@@ -328,4 +323,4 @@ export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) 
   );
 }
 
-export { reviewsHref, DEFAULT_PAGE_SIZE };
+export { DEFAULT_PAGE_SIZE };
