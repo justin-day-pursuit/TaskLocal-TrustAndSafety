@@ -1,38 +1,105 @@
+import { redirect } from "next/navigation";
+
 import { FlaggedQueueTable } from "@/components/flagged/FlaggedQueueTable";
 import {
   parseReviewerRoleFilter,
   reviewerRoleFromFilter,
   ReviewerRoleTabs,
 } from "@/components/flagged/ReviewerRoleTabs";
+import { PaginationBar } from "@/components/reviews/PaginationBar";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { getBookingsByIds } from "@/lib/queries/bookings";
-import { getFlaggedReviews } from "@/lib/queries/reviews";
+import { getFlaggedReviewsPaginated } from "@/lib/queries/review-catalog";
 import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentation";
+import {
+  DEFAULT_PAGE,
+  parseActionNeededListParams,
+  serializeActionNeededListParams,
+  type ActionNeededListParams,
+  type PageSize,
+} from "@/lib/reviews/search-params";
 
 export const dynamic = "force-dynamic";
 
 interface ActionNeededPageProps {
-  searchParams: Promise<{ role?: string | string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+function actionNeededHref(params: ActionNeededListParams): string {
+  const qs = serializeActionNeededListParams(params);
+  return qs ? `/action-needed?${qs}` : "/action-needed";
+}
+
+function mergeActionNeededListParams(
+  current: ActionNeededListParams,
+  updates: Partial<ActionNeededListParams>
+): ActionNeededListParams {
+  const next: ActionNeededListParams = { ...current, ...updates };
+  if ("role" in updates && updates.role !== current.role) {
+    next.page = DEFAULT_PAGE;
+  }
+  return next;
 }
 
 export default async function ActionNeededPage({
   searchParams,
 }: ActionNeededPageProps) {
-  const params = await searchParams;
-  const roleFilter = parseReviewerRoleFilter(params.role);
+  const rawParams = await searchParams;
+  const listParams = parseActionNeededListParams(rawParams);
+  const roleFilter = parseReviewerRoleFilter(rawParams.role);
   const reviewerRole = reviewerRoleFromFilter(roleFilter);
 
-  const { data, error } = await getFlaggedReviews(reviewerRole);
+  const result = await getFlaggedReviewsPaginated({
+    reviewerRole,
+    page: listParams.page,
+    pageSize: listParams.pageSize,
+  });
 
-  let bookingsResult: Awaited<ReturnType<typeof getBookingsByIds>> | null =
-    null;
-
-  if (data && data.length > 0) {
-    const bookingIds = [...new Set(data.map((review) => review.bookingId))];
-    bookingsResult = await getBookingsByIds(bookingIds);
+  if (result.totalCount > 0 && result.page !== listParams.page) {
+    redirect(
+      actionNeededHref(
+        mergeActionNeededListParams(listParams, { page: result.page })
+      )
+    );
   }
 
-  const presentation = buildReviewListPresentation(data, error, bookingsResult);
+  const presentation = buildReviewListPresentation(
+    result.error ? null : result.reviews,
+    result.error,
+    result.error
+      ? null
+      : { data: result.bookings, error: result.bookingsError }
+  );
+
+  const showPageReset =
+    listParams.page > DEFAULT_PAGE &&
+    result.totalCount === 0 &&
+    !result.error;
+
+  function hrefForPage(page: number): string {
+    return actionNeededHref(mergeActionNeededListParams(listParams, { page }));
+  }
+
+  function hrefForPageSize(pageSize: PageSize): string {
+    return actionNeededHref(
+      mergeActionNeededListParams(listParams, {
+        page: DEFAULT_PAGE,
+        pageSize,
+      })
+    );
+  }
+
+  const totalPages =
+    result.totalCount > 0
+      ? Math.ceil(result.totalCount / result.pageSize)
+      : 1;
+  const hasPrev = result.page > 1;
+  const hasNext = result.page < totalPages;
+
+  const pageSizeHrefs = {
+    10: hrefForPageSize(10),
+    25: hrefForPageSize(25),
+    50: hrefForPageSize(50),
+  } as const;
 
   return (
     <div className="space-y-6">
@@ -42,10 +109,10 @@ export default async function ActionNeededPage({
             Action needed
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            open flagged reviews waiting to be resolved, oldest first
+            Open flagged reviews waiting to be resolved, oldest first
           </p>
         </div>
-        <ReviewerRoleTabs active={roleFilter} />
+        <ReviewerRoleTabs active={roleFilter} listParams={listParams} />
       </div>
 
       {presentation.primaryError ? (
@@ -56,11 +123,23 @@ export default async function ActionNeededPage({
       ) : null}
 
       {presentation.showReviewList ? (
-        <FlaggedQueueTable
-          reviews={data ?? []}
-          repeatFlagCounts={presentation.repeatFlagCounts}
-          emptyMessage="No flagged reviews found."
-        />
+        <div className="space-y-4">
+          <FlaggedQueueTable
+            reviews={result.reviews}
+            repeatFlagCounts={presentation.repeatFlagCounts}
+            emptyMessage="No flagged reviews found."
+          />
+          <PaginationBar
+            page={result.page}
+            pageSize={result.pageSize}
+            display={result.display}
+            prevHref={hasPrev ? hrefForPage(result.page - 1) : undefined}
+            nextHref={hasNext ? hrefForPage(result.page + 1) : undefined}
+            resetHref={hrefForPage(DEFAULT_PAGE)}
+            pageSizeHrefs={pageSizeHrefs}
+            showPageReset={showPageReset}
+          />
+        </div>
       ) : null}
     </div>
   );
