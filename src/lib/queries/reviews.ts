@@ -295,6 +295,69 @@ export async function getReviewDetail(reviewId: string): Promise<{
   }
 }
 
+export type FlaggedReviewWithBooking = Review & {
+  customerId: string | null;
+  providerId: string | null;
+  listingId: string | null;
+  bookingStatus: Booking["status"] | null;
+};
+
+export function attachBookingContext(
+  reviews: Review[],
+  bookings: Booking[]
+): FlaggedReviewWithBooking[] {
+  const bookingById = new Map(bookings.map((booking) => [booking.id, booking]));
+
+  return reviews.map((review) => {
+    const booking = bookingById.get(review.bookingId);
+    return {
+      ...review,
+      customerId: booking?.customerId ?? null,
+      providerId: booking?.providerId ?? null,
+      listingId: booking?.listingId ?? null,
+      bookingStatus: booking?.status ?? null,
+    };
+  });
+}
+
+export async function listFlaggedReviewsWithBookings(): Promise<{
+  data: FlaggedReviewWithBooking[] | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from("Review")
+      .select("*")
+      .eq("flag", true)
+      .order("createdAt", { ascending: false });
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    const reviews = (data ?? []) as Review[];
+    const bookingIds = [...new Set(reviews.map((review) => review.bookingId))];
+    const { data: bookings, error: bookingsError } =
+      await getBookingsByIds(bookingIds);
+
+    if (bookingsError) {
+      return { data: null, error: bookingsError };
+    }
+
+    return {
+      data: attachBookingContext(reviews, bookings ?? []),
+      error: null,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to load flagged reviews";
+    return { data: null, error: message };
+  }
+}
+
 export async function resolveReview(id: string): Promise<{
   data: Review | null;
   error: string | null;
