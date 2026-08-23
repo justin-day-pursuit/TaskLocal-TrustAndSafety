@@ -27,18 +27,19 @@ Spec: [docs/PRD.md](docs/PRD.md).
 npm install
 ```
 
-2. Copy the env template and add your publishable key:
+2. Copy the env template and add keys:
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-Set these values in `.env.local`:
+Set these values in `.env.local` (and the same names on the Vercel project):
 
 - `NEXT_PUBLIC_SUPABASE_URL` — already prefilled in the example file
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — your Supabase publishable (anon) key
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — your Supabase publishable (anon) key, for public Provider / active Listing reads only
+- `SUPABASE_SERVICE_ROLE_KEY` — server-only service role key. Ask the database owner for it directly (Supabase → Project Settings → API). Set it as a **non-`NEXT_PUBLIC_`** env var in Vercel. Never commit it, prefix it with `NEXT_PUBLIC_` / `VITE_`, or paste it into chat.
 
-Do **not** use the service role key or database password in this app.
+The service role key is required for Customer, Booking, and Review access once `005_enable_authenticated_rls.sql` runs. Those queries run on the Next.js server (`src/lib/supabase/service-role.ts` and `/api/flagged-reviews`, `/api/reviews/[id]/resolve`). The browser never receives this key.
 
 3. Start the dev server:
 
@@ -61,10 +62,11 @@ Open [http://localhost:3000](http://localhost:3000).
 src/
   app/                  # Next.js routes (/action-needed, /reviews, /trends)
     action-needed/      # Queue table, tabs, detail, resolve action
+    api/                # Privileged proxy routes (flagged reviews, resolve)
     reviews/            # All-reviews catalog
   components/           # UI, layout, queue, and catalog components
   lib/
-    supabase/           # Supabase client wrappers
+    supabase/           # Publishable (public) + service-role (server) clients
     types/              # Shared schema TypeScript types
     constants/          # Enum value lists
     utils/              # ID generation helpers
