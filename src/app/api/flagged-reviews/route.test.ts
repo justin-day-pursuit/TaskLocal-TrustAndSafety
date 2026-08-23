@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { listFlaggedReviewsWithBookings } = vi.hoisted(() => ({
   listFlaggedReviewsWithBookings: vi.fn(),
@@ -8,9 +8,36 @@ vi.mock("@/lib/queries/reviews", () => ({ listFlaggedReviewsWithBookings }));
 
 import { GET } from "@/app/api/flagged-reviews/route";
 
+const SECRET = "test-dashboard-api-secret";
+const originalSecret = process.env.DASHBOARD_API_SECRET;
+
+function authorizedRequest(): Request {
+  return new Request("http://localhost/api/flagged-reviews", {
+    headers: { authorization: `Bearer ${SECRET}` },
+  });
+}
+
 describe("GET /api/flagged-reviews", () => {
   beforeEach(() => {
+    process.env.DASHBOARD_API_SECRET = SECRET;
     listFlaggedReviewsWithBookings.mockReset();
+  });
+
+  afterEach(() => {
+    if (originalSecret === undefined) {
+      delete process.env.DASHBOARD_API_SECRET;
+    } else {
+      process.env.DASHBOARD_API_SECRET = originalSecret;
+    }
+  });
+
+  it("rejects callers without a valid bearer token before querying", async () => {
+    const response = await GET(new Request("http://localhost/api/flagged-reviews"));
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toEqual({ data: null, error: "Unauthorized" });
+    expect(listFlaggedReviewsWithBookings).not.toHaveBeenCalled();
   });
 
   it("returns flagged reviews with booking context", async () => {
@@ -30,7 +57,7 @@ describe("GET /api/flagged-reviews", () => {
       error: null,
     });
 
-    const response = await GET();
+    const response = await GET(authorizedRequest());
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -43,7 +70,7 @@ describe("GET /api/flagged-reviews", () => {
       error: "permission denied",
     });
 
-    const response = await GET();
+    const response = await GET(authorizedRequest());
     const body = await response.json();
 
     expect(response.status).toBe(500);

@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { authorizeInternalApi } from "@/lib/api/internal-auth";
 import { resolveReview } from "@/lib/queries/reviews";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +17,14 @@ function revalidateReviewPaths(reviewId: string) {
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const denied = authorizeInternalApi(request);
+  if (denied) {
+    return denied;
+  }
+
   const { id } = await context.params;
   const reviewId = id.trim();
 
