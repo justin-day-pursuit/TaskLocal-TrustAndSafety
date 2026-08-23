@@ -43,7 +43,16 @@ The service role key is required for Customer, Booking, and Review access once `
 
 Optional HTTP proxies (`GET /api/flagged-reviews`, `POST /api/reviews/[id]/resolve`) are locked. They require `Authorization: Bearer $DASHBOARD_API_SECRET` and return 503 if that server-only env var is unset. The dashboard UI does not call them.
 
-3. Start the dev server:
+### Pre-RLS checklist (do this before `005_enable_authenticated_rls.sql`)
+
+1. Ask the database owner for the `service_role` key privately (Supabase → Project Settings → API). Do not paste it into chat, commits, or shared channels.
+2. Set `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` (gitignored).
+3. Set the same variable on the Vercel project for Production (and Preview if you use preview deploys). Never prefix with `NEXT_PUBLIC_` or `VITE_`.
+4. Optionally set `DASHBOARD_API_SECRET` only if you need the HTTP proxies; the dashboard UI does not require it.
+5. Smoke test **while RLS is still off**: open `/`, `/action-needed`, resolve one flagged review, confirm Overview stats load.
+6. After the migration runs, repeat that smoke test. Direct anon-key Review reads should fail; the dashboard should still work.
+
+3. Start the local dev server:
 
 ```bash
 npm run dev

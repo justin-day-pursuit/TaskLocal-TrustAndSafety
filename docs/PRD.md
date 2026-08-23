@@ -41,7 +41,7 @@ Already shipped on `main` (Reviews Console squash [#8](https://github.com/justin
 Hard rules that stay:
 
 - Do **not** create, alter, or drop tables.
-- Do **not** use the service role key.
+- Use the service role key **only** on the Next.js server (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_` / `VITE_`). Required for Customer / Booking / Review after `005_enable_authenticated_rls.sql`. Never ship it to the browser.
 - Table names are capitalized: `Provider`, `Listing`, `Customer`, `Booking`, `Review`.
 - Enums are plain text in the DB; validate in app code (`src/lib/constants/enums.ts`).
 - Resolve stays binary (`handled = true`). No dispositions, notes, or audit trail in this slice.
@@ -96,7 +96,7 @@ Nav active state: `/action-needed/[id]` must highlight **Action needed** (`pathn
 
 ### Parking lot (do not implement now)
 
-- Auth / RLS / RBAC
+- Staff login / RBAC (dashboard uses server-only service role after shared RLS; no staff role in the shared migration)
 - Non-binary resolve (dismiss vs uphold, notes, actor)
 - Unused scaffold cleanup (`DataTable`, `generateId`, `createBrowserClient`, `getListingsByIds`)
 - Fetching Provider/Customer **names** (IDs on booking are enough this slice)
@@ -345,13 +345,13 @@ Do not delete `/trends`. Do not add auth.
 - [ ] Booking fetch failure shows a banner and **still shows** reviews.
 - [ ] Resolve from Action needed (list or detail) keeps `role` / `page` query params.
 - [ ] `npm test`, `npm run lint`, `npm run build` pass.
-- [ ] No schema migrations. No service role key. Resolve still only sets `handled=true`.
+- [ ] No schema migrations. Service role key stays server-only (`SUPABASE_SERVICE_ROLE_KEY`). Resolve still only sets `handled=true`.
 
 ---
 
 ## 11. Non-goals reminder
 
-If a follow-up agent is tempted to “just add” any of these, **stop** — they are parking lot: auth, RLS, richer resolve, scaffold deletion, Provider/Customer names, trends charts, NLP, GitHub Actions, bans.
+If a follow-up agent is tempted to “just add” any of these, **stop** — they are parking lot: staff login/RBAC, richer resolve, scaffold deletion, Provider/Customer names, trends charts, NLP, GitHub Actions, bans. (Server-only service role for Review/Booking after shared RLS is already in scope — see hard rules.)
 
 ---
 
