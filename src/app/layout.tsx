@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TaskLocal — Trust & Safety",
   description:
-    "Trust and safety dashboard for TaskLocal marketplace reviews and flagged bookings.",
+    "Trust & Safety dashboard for TaskLocal marketplace reviews and flagged bookings.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-sans text-zinc-900">
+      <body className="h-full font-sans text-zinc-900">
         <AppShell>{children}</AppShell>
       </body>
     </html>

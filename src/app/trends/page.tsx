@@ -18,6 +18,7 @@ export default function TrendsPage() {
   ];
 
   return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-zinc-900">Trends</h2>
@@ -38,6 +39,7 @@ export default function TrendsPage() {
           </section>
         ))}
       </div>
+    </div>
     </div>
   );
 }

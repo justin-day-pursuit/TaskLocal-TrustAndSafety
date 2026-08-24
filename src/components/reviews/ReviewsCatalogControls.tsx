@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 
 import { BOOKING_STATUSES, REVIEWER_ROLES } from "@/lib/constants/enums";
 import {
@@ -22,8 +22,18 @@ interface ReviewsCatalogControlsProps {
   params: ReviewsCatalogParams;
 }
 
-function navigate(router: ReturnType<typeof useRouter>, next: ReviewsCatalogParams) {
-  router.push(reviewsHref(next));
+function navigate(
+  router: ReturnType<typeof useRouter>,
+  current: ReviewsCatalogParams,
+  next: ReviewsCatalogParams
+) {
+  const href = reviewsHref(next);
+  const currentHref = reviewsHref(current);
+  if (href === currentHref) {
+    router.refresh();
+  } else {
+    router.push(href);
+  }
 }
 
 const SORT_LABELS: Record<ReviewSortField, string> = {
@@ -53,32 +63,75 @@ const BOOKING_STATUS_LABELS: Record<(typeof BOOKING_STATUSES)[number], string> =
     cancelled: "Cancelled",
   };
 
+function CatalogSearchForm({
+  inputName,
+  label,
+  placeholder,
+  submitLabel,
+  initialValue,
+  onSearch,
+}: {
+  inputName: string;
+  label: string;
+  placeholder: string;
+  submitLabel: string;
+  initialValue: string;
+  onSearch: (value: string) => void;
+}) {
+  const [value, setValue] = useState(initialValue);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSearch(value.trim());
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-1">
+      <label className="block text-xs font-medium text-zinc-600" htmlFor={inputName}>
+        {label}
+      </label>
+      <div className="flex gap-2">
+        <input
+          id={inputName}
+          type="search"
+          name={inputName}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder={placeholder}
+          className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+        >
+          {submitLabel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
   function pushUpdates(updates: Partial<ReviewsCatalogParams>) {
+    const next = mergeReviewsCatalogParams(params, updates);
     startTransition(() => {
-      navigate(router, mergeReviewsCatalogParams(params, updates));
+      navigate(router, params, next);
     });
   }
 
-  function handleReviewSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const qReview = String(formData.get("qReview") ?? "").trim();
-    pushUpdates({ qReview: qReview || undefined });
+  function handleReviewSearch(trimmed: string) {
+    pushUpdates({ qReview: trimmed || undefined });
   }
 
-  function handleBookingSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const qBooking = String(formData.get("qBooking") ?? "").trim();
-    pushUpdates({ qBooking: qBooking || undefined });
+  function handleBookingSearch(trimmed: string) {
+    pushUpdates({ qBooking: trimmed || undefined });
   }
 
   function clearFilters() {
-    navigate(router, {
+    navigate(router, params, {
       reviewerRole: "all",
       flag: "all",
       handled: "all",
@@ -92,12 +145,13 @@ export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) 
     });
   }
 
+  const handledAvailable = params.flag !== "false";
   const hasActiveFilters =
     Boolean(params.qReview) ||
     Boolean(params.qBooking) ||
     params.reviewerRole !== "all" ||
     params.flag !== "all" ||
-    params.handled !== "all" ||
+    (handledAvailable && params.handled !== "all") ||
     params.bookingStatus !== "all" ||
     params.sort !== DEFAULT_SORT ||
     params.dir !== DEFAULT_DIR ||
@@ -105,7 +159,7 @@ export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) 
     params.createdMonth !== undefined;
 
   return (
-    <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4">
+    <div className="space-y-3 rounded-lg border border-zinc-200 bg-white p-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h3 className="text-sm font-medium text-zinc-900">Search & filters</h3>
@@ -125,43 +179,25 @@ export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) 
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <form onSubmit={handleReviewSearch} className="space-y-2">
-          <label className="block text-xs font-medium text-zinc-600">
-            Review IDs
-            <input
-              type="search"
-              name="qReview"
-              defaultValue={params.qReview ?? ""}
-              placeholder="Review or booking id"
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
-            />
-          </label>
-          <button
-            type="submit"
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Search reviews
-          </button>
-        </form>
+        <CatalogSearchForm
+          key={`qReview:${params.qReview ?? ""}`}
+          inputName="qReview"
+          label="Review IDs"
+          placeholder="Review or booking id"
+          submitLabel="Search reviews"
+          initialValue={params.qReview ?? ""}
+          onSearch={handleReviewSearch}
+        />
 
-        <form onSubmit={handleBookingSearch} className="space-y-2">
-          <label className="block text-xs font-medium text-zinc-600">
-            Booking IDs
-            <input
-              type="search"
-              name="qBooking"
-              defaultValue={params.qBooking ?? ""}
-              placeholder="Booking, listing, customer, or provider id"
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
-            />
-          </label>
-          <button
-            type="submit"
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
-          >
-            Search bookings
-          </button>
-        </form>
+        <CatalogSearchForm
+          key={`qBooking:${params.qBooking ?? ""}`}
+          inputName="qBooking"
+          label="Booking IDs"
+          placeholder="Booking, listing, customer, or provider id"
+          submitLabel="Search bookings"
+          initialValue={params.qBooking ?? ""}
+          onSearch={handleBookingSearch}
+        />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -202,22 +238,24 @@ export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) 
           </select>
         </label>
 
-        <label className="block text-xs font-medium text-zinc-600">
-          Handled
-          <select
-            value={params.handled}
-            onChange={(event) =>
-              pushUpdates({
-                handled: event.target.value as ReviewsCatalogParams["handled"],
-              })
-            }
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
-          >
-            <option value="all">All</option>
-            <option value="true">Handled</option>
-            <option value="false">Unhandled</option>
-          </select>
-        </label>
+        {handledAvailable ? (
+          <label className="block text-xs font-medium text-zinc-600">
+            Handled
+            <select
+              value={params.handled}
+              onChange={(event) =>
+                pushUpdates({
+                  handled: event.target.value as ReviewsCatalogParams["handled"],
+                })
+              }
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="true">Handled</option>
+              <option value="false">Unhandled</option>
+            </select>
+          </label>
+        ) : null}
 
         <label className="block text-xs font-medium text-zinc-600">
           Booking status

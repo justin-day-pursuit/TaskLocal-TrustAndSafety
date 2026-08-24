@@ -104,48 +104,58 @@ export default async function ActionNeededPage({
   } as const;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-zinc-900">
-            Action needed
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Open flagged reviews waiting to be resolved, oldest first
-          </p>
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="shrink-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-zinc-900">
+              Action needed
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Open flagged reviews waiting to be resolved, oldest first
+            </p>
+          </div>
+          <ReviewerRoleTabs active={roleFilter} listParams={listParams} />
         </div>
-        <ReviewerRoleTabs active={roleFilter} listParams={listParams} />
+
+        {presentation.primaryError ? (
+          <div className="mt-3">
+            <ErrorBanner message={presentation.primaryError} />
+          </div>
+        ) : null}
+        {presentation.enrichmentError ? (
+          <div className="mt-3">
+            <ErrorBanner message={presentation.enrichmentError} />
+          </div>
+        ) : null}
       </div>
 
-      {presentation.primaryError ? (
-        <ErrorBanner message={presentation.primaryError} />
-      ) : null}
-      {presentation.enrichmentError ? (
-        <ErrorBanner message={presentation.enrichmentError} />
-      ) : null}
-
       {presentation.showReviewList ? (
-        <div className="space-y-4">
-          <FlaggedQueueTable
-            reviews={result.reviews}
-            bookings={result.bookings}
-            bookingsError={presentation.enrichmentError}
-            repeatFlagCounts={presentation.repeatFlagCounts}
-            listParams={listParams}
-            expandedReviewId={expandedReviewId}
-            emptyMessage="No flagged reviews found."
-          />
-          <PaginationBar
-            page={result.page}
-            pageSize={result.pageSize}
-            display={result.display}
-            prevHref={hasPrev ? hrefForPage(result.page - 1) : undefined}
-            nextHref={hasNext ? hrefForPage(result.page + 1) : undefined}
-            resetHref={hrefForPage(DEFAULT_PAGE)}
-            pageSizeHrefs={pageSizeHrefs}
-            showPageReset={showPageReset}
-          />
-        </div>
+        <>
+          <div className="min-h-[12rem] flex-1 overflow-y-auto">
+            <FlaggedQueueTable
+              reviews={result.reviews}
+              bookings={result.bookings}
+              bookingsError={presentation.enrichmentError}
+              repeatFlagCounts={presentation.repeatFlagCounts}
+              listParams={listParams}
+              expandedReviewId={expandedReviewId}
+              emptyMessage="No flagged reviews found."
+            />
+          </div>
+          <div className="shrink-0">
+            <PaginationBar
+              page={result.page}
+              pageSize={result.pageSize}
+              display={result.display}
+              prevHref={hasPrev ? hrefForPage(result.page - 1) : undefined}
+              nextHref={hasNext ? hrefForPage(result.page + 1) : undefined}
+              resetHref={hrefForPage(DEFAULT_PAGE)}
+              pageSizeHrefs={pageSizeHrefs}
+              showPageReset={showPageReset}
+            />
+          </div>
+        </>
       ) : null}
     </div>
   );

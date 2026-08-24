@@ -20,6 +20,7 @@ export default async function DashboardPage() {
   ].filter(Boolean);
 
   return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -91,6 +92,7 @@ export default async function DashboardPage() {
           </li>
         </ul>
       </section>
+    </div>
     </div>
   );
 }

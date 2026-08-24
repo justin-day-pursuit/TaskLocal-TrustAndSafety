@@ -91,6 +91,15 @@ describe("parseReviewsCatalogParams", () => {
       pageSize: 25,
     });
   });
+
+  it("strips handled when flag is not flagged", () => {
+    expect(
+      parseReviewsCatalogParams({ flag: "false", handled: "true" })
+    ).toMatchObject({
+      flag: "false",
+      handled: "all",
+    });
+  });
 });
 
 describe("serializeReviewsCatalogParams", () => {
@@ -135,11 +144,22 @@ describe("serializeReviewsCatalogParams", () => {
       expanded: "rev_open",
     });
 
+    expect(parsed.handled).toBe("all");
+
     const roundTrip = parseReviewsCatalogParams(
       Object.fromEntries(new URLSearchParams(serializeReviewsCatalogParams(parsed)))
     );
 
     expect(roundTrip).toEqual(parsed);
+  });
+
+  it("omits handled from the query string when flag is not flagged", () => {
+    const parsed = parseReviewsCatalogParams({
+      flag: "false",
+      handled: "true",
+    });
+
+    expect(serializeReviewsCatalogParams(parsed)).toBe("flag=false");
   });
 });
 
@@ -159,6 +179,19 @@ describe("mergeReviewsCatalogParams", () => {
 
     expect(next.page).toBe(5);
     expect(next.pageSize).toBe(50);
+  });
+
+  it("resets handled to all when flag becomes not flagged", () => {
+    const current = parseReviewsCatalogParams({
+      flag: "true",
+      handled: "true",
+      page: "3",
+    });
+    const next = mergeReviewsCatalogParams(current, { flag: "false" });
+
+    expect(next.flag).toBe("false");
+    expect(next.handled).toBe("all");
+    expect(next.page).toBe(1);
   });
 });
 
