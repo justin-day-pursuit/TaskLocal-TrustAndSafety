@@ -1,3 +1,5 @@
+import type { QueryFailureKind } from "@/lib/queries/query-status";
+
 export const STRIPPED_REVIEW_KEYS = [
   "reviewer",
   "rating",
@@ -110,5 +112,6 @@ export interface TrendReport {
 export interface GenerateTrendsResult {
   data: TrendReport | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
   persistWarning: string | null;
 }

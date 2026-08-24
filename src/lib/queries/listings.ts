@@ -1,9 +1,11 @@
+import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-status";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Listing } from "@/lib/types/database";
 
 export async function getListingById(id: string): Promise<{
   data: Listing | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -14,23 +16,22 @@ export async function getListingById(id: string): Promise<{
       .maybeSingle();
 
     if (error) {
-      return { data: null, error: error.message };
+      return queryFail(error, "Failed to load listing");
     }
 
-    return { data: data as Listing | null, error: null };
+    return queryOk((data as Listing | null) ?? null);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load listing";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load listing");
   }
 }
 
 export async function getListingsByIds(listingIds: string[]): Promise<{
   data: Listing[] | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   if (listingIds.length === 0) {
-    return { data: [], error: null };
+    return queryOk([]);
   }
 
   try {
@@ -41,13 +42,11 @@ export async function getListingsByIds(listingIds: string[]): Promise<{
       .in("id", listingIds);
 
     if (error) {
-      return { data: null, error: error.message };
+      return queryFail(error, "Failed to load listings");
     }
 
-    return { data: data as Listing[], error: null };
+    return queryOk(data as Listing[]);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load listings";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load listings");
   }
 }

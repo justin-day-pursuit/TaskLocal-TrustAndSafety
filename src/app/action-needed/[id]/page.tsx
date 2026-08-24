@@ -1,9 +1,13 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { RepeatFlagBadge } from "@/components/flagged/RepeatFlagBadge";
 import { ResolveButton } from "@/components/flagged/ResolveButton";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import {
+  QueryFailureStatus,
+  QueryLoadingStatus,
+} from "@/components/ui/QueryCallStatus";
 import {
   getRepeatFlagCountForReview,
   getReviewDetail,
@@ -58,16 +62,35 @@ export default async function FlaggedDetailPage({
     ...listParams,
     expanded: undefined,
   });
-  const { data, error } = await getReviewDetail(id);
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="space-y-6">
+        <BackLink href={queueHref} />
+        <Suspense fallback={<QueryLoadingStatus copyKey="reviewDetail" />}>
+          <FlaggedDetailContent id={id} queueHref={queueHref} />
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+async function FlaggedDetailContent({
+  id,
+  queueHref,
+}: {
+  id: string;
+  queueHref: string;
+}) {
+  const { data, error, failureKind } = await getReviewDetail(id);
 
   if (error) {
     return (
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="space-y-6">
-          <BackLink href={queueHref} />
-          <ErrorBanner message={error} />
-        </div>
-      </div>
+      <QueryFailureStatus
+        copyKey="reviewDetail"
+        kind={failureKind}
+        detail={error}
+      />
     );
   }
 
@@ -79,12 +102,10 @@ export default async function FlaggedDetailPage({
   const repeatFlagResult = await getRepeatFlagCountForReview(review.id);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-    <div className="space-y-6">
+    <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <BackLink href={queueHref} />
-          <h2 className="mt-4 text-2xl font-semibold text-zinc-900">
+          <h2 className="text-2xl font-semibold text-zinc-900">
             Review detail
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
@@ -114,7 +135,11 @@ export default async function FlaggedDetailPage({
       </div>
 
       {repeatFlagResult.error ? (
-        <ErrorBanner message={repeatFlagResult.error} />
+        <QueryFailureStatus
+          copyKey="repeatFlags"
+          kind={repeatFlagResult.failureKind}
+          detail={repeatFlagResult.error}
+        />
       ) : null}
 
       <section className="rounded-lg border border-zinc-200 bg-white p-6">
@@ -176,8 +201,7 @@ export default async function FlaggedDetailPage({
           </p>
         )}
       </section>
-    </div>
-    </div>
+    </>
   );
 }
 

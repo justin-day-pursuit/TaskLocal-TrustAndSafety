@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { authorizeInternalApi } from "@/lib/api/internal-auth";
+import { httpStatusForQueryFailure } from "@/lib/queries/query-status";
 import { resolveReview } from "@/lib/queries/reviews";
 
 export const dynamic = "force-dynamic";
@@ -35,10 +36,13 @@ export async function POST(
     );
   }
 
-  const { data, error } = await resolveReview(reviewId);
+  const { data, error, failureKind } = await resolveReview(reviewId);
 
   if (error) {
-    return NextResponse.json({ data: null, error }, { status: 500 });
+    return NextResponse.json(
+      { data: null, error },
+      { status: httpStatusForQueryFailure(failureKind) }
+    );
   }
 
   if (!data) {

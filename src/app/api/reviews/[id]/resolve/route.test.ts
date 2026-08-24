@@ -53,6 +53,7 @@ describe("POST /api/reviews/[id]/resolve", () => {
     resolveReview.mockResolvedValue({
       data: { id: "rev_abc", handled: true },
       error: null,
+      failureKind: null,
     });
 
     const response = await POST(
@@ -84,7 +85,7 @@ describe("POST /api/reviews/[id]/resolve", () => {
   });
 
   it("returns 404 when the review is missing", async () => {
-    resolveReview.mockResolvedValue({ data: null, error: null });
+    resolveReview.mockResolvedValue({ data: null, error: null, failureKind: null });
 
     const response = await POST(
       authorizedRequest("http://localhost/api/reviews/rev_missing/resolve"),
@@ -97,6 +98,42 @@ describe("POST /api/reviews/[id]/resolve", () => {
       data: null,
       error: "Review not found or already resolved.",
     });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when resolve fails", async () => {
+    resolveReview.mockResolvedValue({
+      data: null,
+      error: "permission denied",
+      failureKind: "error",
+    });
+
+    const response = await POST(
+      authorizedRequest("http://localhost/api/reviews/rev_abc/resolve"),
+      { params: Promise.resolve({ id: "rev_abc" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({ data: null, error: "permission denied" });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("returns 504 when resolve times out", async () => {
+    resolveReview.mockResolvedValue({
+      data: null,
+      error: "The operation timed out.",
+      failureKind: "timeout",
+    });
+
+    const response = await POST(
+      authorizedRequest("http://localhost/api/reviews/rev_abc/resolve"),
+      { params: Promise.resolve({ id: "rev_abc" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(504);
+    expect(body).toEqual({ data: null, error: "The operation timed out." });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

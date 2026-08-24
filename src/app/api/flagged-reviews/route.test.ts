@@ -55,6 +55,7 @@ describe("GET /api/flagged-reviews", () => {
     listFlaggedReviewsWithBookings.mockResolvedValue({
       data: rows,
       error: null,
+      failureKind: null,
     });
 
     const response = await GET(authorizedRequest());
@@ -68,6 +69,7 @@ describe("GET /api/flagged-reviews", () => {
     listFlaggedReviewsWithBookings.mockResolvedValue({
       data: null,
       error: "permission denied",
+      failureKind: "error",
     });
 
     const response = await GET(authorizedRequest());
@@ -75,5 +77,19 @@ describe("GET /api/flagged-reviews", () => {
 
     expect(response.status).toBe(500);
     expect(body).toEqual({ data: null, error: "permission denied" });
+  });
+
+  it("returns 504 when the privileged query times out", async () => {
+    listFlaggedReviewsWithBookings.mockResolvedValue({
+      data: null,
+      error: "The operation timed out.",
+      failureKind: "timeout",
+    });
+
+    const response = await GET(authorizedRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(504);
+    expect(body).toEqual({ data: null, error: "The operation timed out." });
   });
 });

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { FlaggedQueueTable } from "@/components/flagged/FlaggedQueueTable";
@@ -7,7 +8,10 @@ import {
   ReviewerRoleTabs,
 } from "@/components/flagged/ReviewerRoleTabs";
 import { PaginationBar } from "@/components/reviews/PaginationBar";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import {
+  QueryFailureStatus,
+  QueryLoadingStatus,
+} from "@/components/ui/QueryCallStatus";
 import { getFlaggedReviewsPaginated } from "@/lib/queries/review-catalog";
 import { resolveExpandedReviewId } from "@/lib/reviews/expanded-param";
 import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentation";
@@ -42,6 +46,37 @@ export default async function ActionNeededPage({
   const rawParams = await searchParams;
   const listParams = parseActionNeededListParams(rawParams);
   const roleFilter = parseReviewerRoleFilter(rawParams.role);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="shrink-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-zinc-900">
+              Action needed
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Open flagged reviews waiting to be resolved, oldest first
+            </p>
+          </div>
+          <ReviewerRoleTabs active={roleFilter} listParams={listParams} />
+        </div>
+      </div>
+
+      <Suspense fallback={<QueryLoadingStatus copyKey="flaggedReviews" />}>
+        <ActionNeededResults listParams={listParams} roleFilter={roleFilter} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function ActionNeededResults({
+  listParams,
+  roleFilter,
+}: {
+  listParams: ActionNeededListParams;
+  roleFilter: ReturnType<typeof parseReviewerRoleFilter>;
+}) {
   const reviewerRole = reviewerRoleFromFilter(roleFilter);
 
   const result = await getFlaggedReviewsPaginated({
@@ -63,7 +98,12 @@ export default async function ActionNeededPage({
     result.error,
     result.error
       ? null
-      : { data: result.bookings, error: result.bookingsError }
+      : {
+          data: result.bookings,
+          error: result.bookingsError,
+          failureKind: result.bookingsFailureKind,
+        },
+    result.failureKind
   );
   const expandedReviewId = resolveExpandedReviewId(
     result.reviews,
@@ -104,31 +144,21 @@ export default async function ActionNeededPage({
   } as const;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="shrink-0">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-zinc-900">
-              Action needed
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Open flagged reviews waiting to be resolved, oldest first
-            </p>
-          </div>
-          <ReviewerRoleTabs active={roleFilter} listParams={listParams} />
-        </div>
-
-        {presentation.primaryError ? (
-          <div className="mt-3">
-            <ErrorBanner message={presentation.primaryError} />
-          </div>
-        ) : null}
-        {presentation.enrichmentError ? (
-          <div className="mt-3">
-            <ErrorBanner message={presentation.enrichmentError} />
-          </div>
-        ) : null}
-      </div>
+    <>
+      {presentation.primaryError ? (
+        <QueryFailureStatus
+          copyKey="flaggedReviews"
+          kind={presentation.primaryFailureKind}
+          detail={presentation.primaryError}
+        />
+      ) : null}
+      {presentation.enrichmentError ? (
+        <QueryFailureStatus
+          copyKey="bookings"
+          kind={presentation.enrichmentFailureKind}
+          detail={presentation.enrichmentError}
+        />
+      ) : null}
 
       {presentation.showReviewList ? (
         <>
@@ -157,6 +187,6 @@ export default async function ActionNeededPage({
           </div>
         </>
       ) : null}
-    </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { getBookingsByIds } from "@/lib/queries/bookings";
 import { getListingById } from "@/lib/queries/listings";
+import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-status";
 import type { Booking, Listing, Review, ReviewerRole } from "@/lib/types/database";
 
 export interface ReviewStats {
@@ -75,6 +76,7 @@ export function computeRepeatFlagCounts(
 export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
   data: number | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -85,11 +87,11 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (reviewError) {
-      return { data: null, error: reviewError.message };
+      return queryFail(reviewError, "Failed to compute repeat flag count");
     }
 
     if (!review) {
-      return { data: null, error: "Review not found" };
+      return queryFail("Review not found", "Review not found");
     }
 
     const typedReview = review as Review;
@@ -100,16 +102,16 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (bookingError) {
-      return { data: null, error: bookingError.message };
+      return queryFail(bookingError, "Failed to compute repeat flag count");
     }
 
     if (!booking) {
-      return { data: 0, error: null };
+      return queryOk(0);
     }
 
     const partyId = getReviewedPartyId(typedReview, booking as Booking);
     if (!partyId) {
-      return { data: 0, error: null };
+      return queryOk(0);
     }
 
     const { data: openFlaggedReviews, error: flagsError } = await supabase
@@ -120,16 +122,23 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .eq("reviewerRole", typedReview.reviewerRole);
 
     if (flagsError) {
-      return { data: null, error: flagsError.message };
+      return queryFail(flagsError, "Failed to compute repeat flag count");
     }
 
     const reviews = (openFlaggedReviews ?? []) as Review[];
     const bookingIds = [...new Set(reviews.map((r) => r.bookingId))];
-    const { data: bookings, error: bookingsError } =
-      await getBookingsByIds(bookingIds);
+    const {
+      data: bookings,
+      error: bookingsError,
+      failureKind: bookingsFailureKind,
+    } = await getBookingsByIds(bookingIds);
 
     if (bookingsError) {
-      return { data: null, error: bookingsError };
+      return {
+        data: null,
+        error: bookingsError,
+        failureKind: bookingsFailureKind ?? "error",
+      };
     }
 
     const bookingById = new Map((bookings ?? []).map((b) => [b.id, b]));
@@ -144,19 +153,16 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       return getReviewedPartyId(r, reviewBooking) === partyId;
     }).length;
 
-    return { data: count, error: null };
+    return queryOk(count);
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to compute repeat flag count";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to compute repeat flag count");
   }
 }
 
 export async function getFlaggedReviews(reviewerRole?: ReviewerRole): Promise<{
   data: Review[] | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -174,20 +180,19 @@ export async function getFlaggedReviews(reviewerRole?: ReviewerRole): Promise<{
     const { data, error } = await query;
 
     if (error) {
-      return { data: null, error: error.message };
+      return queryFail(error, "Failed to load flagged reviews");
     }
 
-    return { data: data as Review[], error: null };
+    return queryOk(data as Review[]);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load flagged reviews";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load flagged reviews");
   }
 }
 
 export async function getReviewStats(): Promise<{
   data: ReviewStats | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -204,14 +209,14 @@ export async function getReviewStats(): Promise<{
         .eq("handled", false),
     ]);
 
-    const error =
-      totalResult.error?.message ??
-      flaggedResult.error?.message ??
-      unhandledResult.error?.message ??
-      null;
+    const firstError =
+      totalResult.error ?? flaggedResult.error ?? unhandledResult.error ?? null;
 
-    if (error) {
-      return { data: null, error };
+    if (firstError) {
+      return queryFail(
+        firstError,
+        "Failed to load review stats"
+      );
     }
 
     const stats: ReviewStats = {
@@ -220,11 +225,9 @@ export async function getReviewStats(): Promise<{
       unhandled: unhandledResult.count ?? 0,
     };
 
-    return { data: stats, error: null };
+    return queryOk(stats);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load review stats";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load review stats");
   }
 }
 
@@ -237,6 +240,7 @@ export interface ReviewDetail {
 export async function getReviewDetail(reviewId: string): Promise<{
   data: ReviewDetail | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -247,11 +251,11 @@ export async function getReviewDetail(reviewId: string): Promise<{
       .maybeSingle();
 
     if (reviewError) {
-      return { data: null, error: reviewError.message };
+      return queryFail(reviewError, "Failed to load review detail");
     }
 
     if (!review) {
-      return { data: null, error: null };
+      return queryOk(null);
     }
 
     const typedReview = review as Review;
@@ -262,36 +266,37 @@ export async function getReviewDetail(reviewId: string): Promise<{
       .maybeSingle();
 
     if (bookingError) {
-      return { data: null, error: bookingError.message };
+      return queryFail(bookingError, "Failed to load review detail");
     }
 
     const typedBooking = (booking as Booking | null) ?? null;
     let listing: Listing | null = null;
 
     if (typedBooking) {
-      const { data: listingData, error: listingError } = await getListingById(
-        typedBooking.listingId
-      );
+      const {
+        data: listingData,
+        error: listingError,
+        failureKind: listingFailureKind,
+      } = await getListingById(typedBooking.listingId);
 
       if (listingError) {
-        return { data: null, error: listingError };
+        return {
+          data: null,
+          error: listingError,
+          failureKind: listingFailureKind ?? "error",
+        };
       }
 
       listing = listingData;
     }
 
-    return {
-      data: {
-        review: typedReview,
-        booking: typedBooking,
-        listing,
-      },
-      error: null,
-    };
+    return queryOk({
+      review: typedReview,
+      booking: typedBooking,
+      listing,
+    });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load review detail";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load review detail");
   }
 }
 
@@ -323,6 +328,7 @@ export function attachBookingContext(
 export async function listFlaggedReviewsWithBookings(): Promise<{
   data: FlaggedReviewWithBooking[] | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -333,34 +339,35 @@ export async function listFlaggedReviewsWithBookings(): Promise<{
       .order("createdAt", { ascending: false });
 
     if (error) {
-      return { data: null, error: error.message };
+      return queryFail(error, "Failed to load flagged reviews");
     }
 
     const reviews = (data ?? []) as Review[];
     const bookingIds = [...new Set(reviews.map((review) => review.bookingId))];
-    const { data: bookings, error: bookingsError } =
-      await getBookingsByIds(bookingIds);
+    const {
+      data: bookings,
+      error: bookingsError,
+      failureKind: bookingsFailureKind,
+    } = await getBookingsByIds(bookingIds);
 
     if (bookingsError) {
-      return { data: null, error: bookingsError };
+      return {
+        data: null,
+        error: bookingsError,
+        failureKind: bookingsFailureKind ?? "error",
+      };
     }
 
-    return {
-      data: attachBookingContext(reviews, bookings ?? []),
-      error: null,
-    };
+    return queryOk(attachBookingContext(reviews, bookings ?? []));
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to load flagged reviews";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load flagged reviews");
   }
 }
 
 export async function resolveReview(id: string): Promise<{
   data: Review | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -372,13 +379,11 @@ export async function resolveReview(id: string): Promise<{
       .maybeSingle();
 
     if (error) {
-      return { data: null, error: error.message };
+      return queryFail(error, "Failed to resolve review");
     }
 
-    return { data: data as Review | null, error: null };
+    return queryOk((data as Review | null) ?? null);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to resolve review";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to resolve review");
   }
 }

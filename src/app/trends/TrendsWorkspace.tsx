@@ -9,13 +9,20 @@ import { GroundingTables } from "@/components/trends/GroundingTables";
 import { InsightsPanel } from "@/components/trends/InsightsPanel";
 import { LineChart } from "@/components/trends/LineChart";
 import { WordCloud } from "@/components/trends/WordCloud";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import {
+  QueryCallStatus,
+  QueryFailureStatus,
+  QuerySpinner,
+} from "@/components/ui/QueryCallStatus";
 import { generateTrendsReportAction } from "@/app/trends/actions";
+import { QUERY_COPY, type QueryFailureKind } from "@/lib/queries/query-status";
 import type { TrendReport } from "@/lib/trends/types";
 
 interface TrendsWorkspaceProps {
   initialReport: TrendReport | null;
   autoGenerate: boolean;
+  loadError?: string | null;
+  loadFailureKind?: QueryFailureKind | null;
 }
 
 let autoGenerateStarted = false;
@@ -41,21 +48,32 @@ function truncateLabel(label: string, max = 16): string {
 export function TrendsWorkspace({
   initialReport,
   autoGenerate,
+  loadError = null,
+  loadFailureKind = null,
 }: TrendsWorkspaceProps) {
   const router = useRouter();
   const [report, setReport] = useState<TrendReport | null>(initialReport);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(loadError);
+  const [failureKind, setFailureKind] = useState<QueryFailureKind | null>(
+    loadFailureKind
+  );
+  const [errorCopyKey, setErrorCopyKey] = useState<"trendReport" | "trendGenerate">(
+    loadError ? "trendReport" : "trendGenerate"
+  );
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   async function runGenerate() {
     setError(null);
+    setFailureKind(null);
     setPersistWarning(null);
     setIsGenerating(true);
     try {
       const result = await generateTrendsReportAction();
       if (result.error || !result.data) {
         setError(result.error ?? "Failed to generate the trend report.");
+        setFailureKind(result.failureKind ?? "error");
+        setErrorCopyKey("trendGenerate");
         return;
       }
       setReport(result.data);
@@ -67,6 +85,10 @@ export function TrendsWorkspace({
 
   useEffect(() => {
     if (!autoGenerate) {
+      return;
+    }
+    if (loadError) {
+      router.replace("/trends");
       return;
     }
     if (initialReport) {
@@ -83,7 +105,7 @@ export function TrendsWorkspace({
       });
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [autoGenerate, initialReport, router]);
+  }, [autoGenerate, initialReport, loadError, router]);
 
   const hasReport = report !== null;
   const showChange = Boolean(report?.insights.changeSinceLast.hasPrevious);
@@ -113,17 +135,28 @@ export function TrendsWorkspace({
             void runGenerate();
           }}
           disabled={isGenerating}
-          className="inline-flex shrink-0 items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
         >
-          {isGenerating
-            ? "Generating…"
-            : hasReport
-              ? "Regenerate trend report"
-              : "Generate trend report"}
+          {isGenerating ? (
+            <>
+              <QuerySpinner className="text-white" />
+              {QUERY_COPY.trendGenerate.loading}
+            </>
+          ) : hasReport ? (
+            "Regenerate trend report"
+          ) : (
+            "Generate trend report"
+          )}
         </button>
       </div>
 
-      {error ? <ErrorBanner message={error} /> : null}
+      {error ? (
+        <QueryFailureStatus
+          copyKey={errorCopyKey}
+          kind={failureKind}
+          detail={error}
+        />
+      ) : null}
       {persistWarning ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {persistWarning}
@@ -131,13 +164,13 @@ export function TrendsWorkspace({
       ) : null}
 
       {isGenerating ? (
-        <div className="rounded-lg border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-600">
-          Analyzing stripped reviews with Gemini. This can take a minute. Chart
-          numbers are computed locally so they stay grounded in the dataset.
-        </div>
+        <QueryCallStatus
+          status="loading"
+          message={QUERY_COPY.trendGenerate.loading}
+        />
       ) : null}
 
-      {!hasReport && !isGenerating ? (
+      {!hasReport && !isGenerating && !error ? (
         <section className="rounded-lg border border-dashed border-zinc-300 bg-white p-8">
           <h3 className="text-lg font-medium text-zinc-900">No trend report yet</h3>
           <p className="mt-2 max-w-2xl text-sm text-zinc-500">

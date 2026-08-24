@@ -20,6 +20,7 @@ describe("resolveReviewAction", () => {
     resolveReview.mockResolvedValue({
       data: { id: "rev_abc", handled: true },
       error: null,
+      failureKind: null,
     });
 
     await resolveReviewAction("rev_abc");
@@ -34,11 +35,31 @@ describe("resolveReviewAction", () => {
   });
 
   it("skips revalidation when resolve returns an error", async () => {
-    resolveReview.mockResolvedValue({ data: null, error: "db error" });
+    resolveReview.mockResolvedValue({
+      data: null,
+      error: "db error",
+      failureKind: "error",
+    });
 
     const result = await resolveReviewAction("rev_missing");
 
-    expect(result).toEqual({ error: "db error" });
+    expect(result).toEqual({ error: "db error", failureKind: "error" });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("passes through a timeout failure kind", async () => {
+    resolveReview.mockResolvedValue({
+      data: null,
+      error: "The operation timed out.",
+      failureKind: "timeout",
+    });
+
+    const result = await resolveReviewAction("rev_slow");
+
+    expect(result).toEqual({
+      error: "The operation timed out.",
+      failureKind: "timeout",
+    });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

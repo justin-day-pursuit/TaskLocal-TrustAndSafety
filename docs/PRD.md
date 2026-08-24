@@ -35,8 +35,9 @@ Already shipped on `main` (Reviews Console squash [#8](https://github.com/justin
 - `/action-needed/[id]`: Review → Booking → Listing detail + Resolve (returns to the queue URL including query params).
 - Resolve: `src/app/action-needed/actions.ts` → `resolveReview()` sets `handled=true` only. List/panel keep the current query string.
 - `/reviews`: all-reviews catalog (search/filter/sort/dates/pagination + expand). Not an NLP page.
-- `/trends`: placeholder (stays placeholder).
-- Tests: `npm test` — Vitest, 12 files / 54 offline tests.
+- `/trends`: on-demand Gemini analytics (charts, insights, persist). Not a placeholder.
+- Request states: loading spinner + description, error, and timeout on database/API calls. Success is the data. DB calls abort after 10s; Gemini after 90s. Booking enrichment failure/timeout still shows the review list (T7).
+- Tests: `npm test` — Vitest, offline (no live Supabase required).
 
 Hard rules that stay:
 
@@ -100,7 +101,6 @@ Nav active state: `/action-needed/[id]` must highlight **Action needed** (`pathn
 - Non-binary resolve (dismiss vs uphold, notes, actor)
 - Unused scaffold cleanup (`DataTable`, `generateId`, `createBrowserClient`, `getListingsByIds`)
 - Fetching Provider/Customer **names** (IDs on booking are enough this slice)
-- `/trends` analytics
 - NLP / review themes
 - CI workflows
 - Bans, cases, policy engine, risk scores
@@ -237,9 +237,20 @@ Update dashboard copy that still says “flagged queue”.
 
 **Bug:** `src/app/flagged/page.tsx` skips `FlaggedQueueTable` when `bookingsError` is set.
 
-**Fix:** always render the review list when reviews loaded. If bookings fail: banner, `repeatFlagCounts` empty/zero, booking expand shows the error. Same rule on `/reviews`.
+**Fix:** always render the review list when reviews loaded. If bookings fail or time out: banner with error vs timeout copy, `repeatFlagCounts` empty/zero, booking expand shows the error. Same rule on `/reviews`.
 
 *(Status: Shipped on `main` via #8.)*
+
+### Request states (do not regress)
+
+Database and API calls show:
+
+- **Loading** — spinner + a description of the in-flight call (inner `Suspense`, not a route-level `loading.tsx` on `/reviews` or `/action-needed`, so filters/tabs stay visible).
+- **Error** — “There was an error …” plus optional technical detail.
+- **Timeout** — “The request timed out …” (10s Supabase fetch abort; 90s Gemini). Privileged HTTP proxies return **504**.
+- **Success** — render the data. No success toast.
+
+`failureKind: "error" | "timeout" | null` travels with query results. Classify abort/timeout in `src/lib/queries/query-status.ts`.
 
 ### T8 — Preserve query string on Resolve
 
@@ -270,7 +281,7 @@ Add Vitest (`npm test`). No live-DB requirement for CI-less local runs.
 
 Do **not** add Playwright in this slice unless it is free with existing deps.
 
-*(Status: Shipped on `main` via #8. `npm test` is 12 files / 54 offline tests.)*
+*(Status: Shipped on `main` via #8. Test counts live in `README.md` / `npm test`.)*
 
 ---
 
@@ -351,7 +362,7 @@ Do not delete `/trends`. Do not add auth.
 
 ## 11. Non-goals reminder
 
-If a follow-up agent is tempted to “just add” any of these, **stop** — they are parking lot: staff login/RBAC, richer resolve, scaffold deletion, Provider/Customer names, trends charts, NLP, GitHub Actions, bans. (Server-only service role for Review/Booking after shared RLS is already in scope — see hard rules.)
+If a follow-up agent is tempted to “just add” any of these, **stop** — they are parking lot: staff login/RBAC, richer resolve, scaffold deletion, Provider/Customer names, NLP, GitHub Actions, bans. (Server-only service role for Review/Booking after shared RLS is already in scope — see hard rules. `/trends` analytics and request-state UX have shipped — do not regress them.)
 
 ---
 

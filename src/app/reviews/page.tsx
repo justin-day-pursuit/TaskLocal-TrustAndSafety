@@ -1,10 +1,14 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
-import { ReviewsCatalogControls } from "@/components/reviews/ReviewsCatalogControls";
+import { ReviewsCatalogShell } from "@/components/reviews/ReviewsCatalogShell";
 import { PaginationBar } from "@/components/reviews/PaginationBar";
 import { PostgrestCapNote } from "@/components/reviews/PostgrestCapNote";
 import { ReviewsCatalogTable } from "@/components/reviews/ReviewsCatalogTable";
-import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import {
+  QueryFailureStatus,
+  QueryLoadingStatus,
+} from "@/components/ui/QueryCallStatus";
 import { getReviewCatalog } from "@/lib/queries/review-catalog";
 import { resolveExpandedReviewId } from "@/lib/reviews/expanded-param";
 import { buildReviewListPresentation } from "@/lib/reviews/reviewListPresentation";
@@ -15,6 +19,7 @@ import {
   requiresBookingFirstQuery,
   reviewsHref,
   type PageSize,
+  type ReviewsCatalogParams,
 } from "@/lib/reviews/search-params";
 
 export const dynamic = "force-dynamic";
@@ -26,13 +31,36 @@ interface ReviewsPageProps {
 export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   const rawParams = await searchParams;
   const catalogParams = parseReviewsCatalogParams(rawParams);
-  const catalog = await getReviewCatalog(catalogParams);
 
-  if (catalog.totalCount > 0 && catalog.page !== catalogParams.page) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="shrink-0">
+        <h2 className="text-2xl font-semibold text-zinc-900">Reviews</h2>
+        <p className="mt-1 text-sm text-zinc-500">
+          Full catalog of marketplace reviews — search, filter, and sort across
+          review and booking fields.
+        </p>
+      </div>
+
+      <ReviewsCatalogShell params={catalogParams}>
+        <Suspense fallback={<QueryLoadingStatus copyKey="reviewsCatalog" />}>
+          <ReviewsCatalogResults params={catalogParams} />
+        </Suspense>
+      </ReviewsCatalogShell>
+    </div>
+  );
+}
+
+async function ReviewsCatalogResults({
+  params,
+}: {
+  params: ReviewsCatalogParams;
+}) {
+  const catalog = await getReviewCatalog(params);
+
+  if (catalog.totalCount > 0 && catalog.page !== params.page) {
     redirect(
-      reviewsHref(
-        mergeReviewsCatalogParams(catalogParams, { page: catalog.page })
-      )
+      reviewsHref(mergeReviewsCatalogParams(params, { page: catalog.page }))
     );
   }
 
@@ -41,28 +69,31 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     catalog.error,
     catalog.error
       ? null
-      : { data: catalog.bookings, error: catalog.bookingsError }
+      : {
+          data: catalog.bookings,
+          error: catalog.bookingsError,
+          failureKind: catalog.bookingsFailureKind,
+        },
+    catalog.failureKind
   );
   const expandedReviewId = resolveExpandedReviewId(
     catalog.reviews,
-    catalogParams.expanded
+    params.expanded
   );
 
   const showCapNote =
-    requiresBookingFirstQuery(catalogParams) && catalog.postgrestCapHit;
+    requiresBookingFirstQuery(params) && catalog.postgrestCapHit;
 
   const showPageReset =
-    catalogParams.page > DEFAULT_PAGE &&
-    catalog.totalCount === 0 &&
-    !catalog.error;
+    params.page > DEFAULT_PAGE && catalog.totalCount === 0 && !catalog.error;
 
   function hrefForPage(page: number): string {
-    return reviewsHref(mergeReviewsCatalogParams(catalogParams, { page }));
+    return reviewsHref(mergeReviewsCatalogParams(params, { page }));
   }
 
   function hrefForPageSize(pageSize: PageSize): string {
     return reviewsHref(
-      mergeReviewsCatalogParams(catalogParams, {
+      mergeReviewsCatalogParams(params, {
         page: DEFAULT_PAGE,
         pageSize,
       })
@@ -83,35 +114,31 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   } as const;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="shrink-0">
-        <h2 className="text-2xl font-semibold text-zinc-900">Reviews</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Full catalog of marketplace reviews — search, filter, and sort across
-          review and booking fields.
-        </p>
-      </div>
+    <>
+      {showCapNote ? (
+        <div className="mt-3">
+          <PostgrestCapNote visible />
+        </div>
+      ) : null}
 
-      <div className="min-h-0 shrink overflow-y-auto">
-        <ReviewsCatalogControls params={catalogParams} />
-
-        {showCapNote ? (
-          <div className="mt-3">
-            <PostgrestCapNote visible />
-          </div>
-        ) : null}
-
-        {presentation.primaryError ? (
-          <div className="mt-3">
-            <ErrorBanner message={presentation.primaryError} />
-          </div>
-        ) : null}
-        {presentation.enrichmentError ? (
-          <div className="mt-3">
-            <ErrorBanner message={presentation.enrichmentError} />
-          </div>
-        ) : null}
-      </div>
+      {presentation.primaryError ? (
+        <div className="mt-3">
+          <QueryFailureStatus
+            copyKey="reviewsCatalog"
+            kind={presentation.primaryFailureKind}
+            detail={presentation.primaryError}
+          />
+        </div>
+      ) : null}
+      {presentation.enrichmentError ? (
+        <div className="mt-3">
+          <QueryFailureStatus
+            copyKey="bookings"
+            kind={presentation.enrichmentFailureKind}
+            detail={presentation.enrichmentError}
+          />
+        </div>
+      ) : null}
 
       {presentation.showReviewList ? (
         <>
@@ -120,7 +147,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               reviews={catalog.reviews}
               bookings={catalog.bookings}
               bookingsError={presentation.enrichmentError}
-              listParams={catalogParams}
+              listParams={params}
               expandedReviewId={expandedReviewId}
             />
           </div>
@@ -138,6 +165,6 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           </div>
         </>
       ) : null}
-    </div>
+    </>
   );
 }
