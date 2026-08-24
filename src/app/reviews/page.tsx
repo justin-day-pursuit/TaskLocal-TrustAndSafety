@@ -83,8 +83,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
   } as const;
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="shrink-0">
         <h2 className="text-2xl font-semibold text-zinc-900">Reviews</h2>
         <p className="mt-1 text-sm text-zinc-500">
           Full catalog of marketplace reviews — search, filter, and sort across
@@ -92,37 +92,51 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
         </p>
       </div>
 
-      <ReviewsCatalogControls params={catalogParams} />
+      <div className="min-h-0 shrink overflow-y-auto">
+        <ReviewsCatalogControls params={catalogParams} />
 
-      {showCapNote ? <PostgrestCapNote visible /> : null}
+        {showCapNote ? (
+          <div className="mt-3">
+            <PostgrestCapNote visible />
+          </div>
+        ) : null}
 
-      {presentation.primaryError ? (
-        <ErrorBanner message={presentation.primaryError} />
-      ) : null}
-      {presentation.enrichmentError ? (
-        <ErrorBanner message={presentation.enrichmentError} />
-      ) : null}
+        {presentation.primaryError ? (
+          <div className="mt-3">
+            <ErrorBanner message={presentation.primaryError} />
+          </div>
+        ) : null}
+        {presentation.enrichmentError ? (
+          <div className="mt-3">
+            <ErrorBanner message={presentation.enrichmentError} />
+          </div>
+        ) : null}
+      </div>
 
       {presentation.showReviewList ? (
-        <div className="space-y-4">
-          <ReviewsCatalogTable
-            reviews={catalog.reviews}
-            bookings={catalog.bookings}
-            bookingsError={presentation.enrichmentError}
-            listParams={catalogParams}
-            expandedReviewId={expandedReviewId}
-          />
-          <PaginationBar
-            page={catalog.page}
-            pageSize={catalog.pageSize}
-            display={catalog.display}
-            prevHref={hasPrev ? hrefForPage(catalog.page - 1) : undefined}
-            nextHref={hasNext ? hrefForPage(catalog.page + 1) : undefined}
-            resetHref={hrefForPage(DEFAULT_PAGE)}
-            pageSizeHrefs={pageSizeHrefs}
-            showPageReset={showPageReset}
-          />
-        </div>
+        <>
+          <div className="min-h-[12rem] flex-1 overflow-y-auto">
+            <ReviewsCatalogTable
+              reviews={catalog.reviews}
+              bookings={catalog.bookings}
+              bookingsError={presentation.enrichmentError}
+              listParams={catalogParams}
+              expandedReviewId={expandedReviewId}
+            />
+          </div>
+          <div className="shrink-0">
+            <PaginationBar
+              page={catalog.page}
+              pageSize={catalog.pageSize}
+              display={catalog.display}
+              prevHref={hasPrev ? hrefForPage(catalog.page - 1) : undefined}
+              nextHref={hasNext ? hrefForPage(catalog.page + 1) : undefined}
+              resetHref={hrefForPage(DEFAULT_PAGE)}
+              pageSizeHrefs={pageSizeHrefs}
+              showPageReset={showPageReset}
+            />
+          </div>
+        </>
       ) : null}
     </div>
   );

@@ -4,6 +4,47 @@ Internal moderation dashboard for the TaskLocal Trust & Safety product (Product 
 
 > **Scope Note**: This repository covers **Product D (Trust & Safety Dashboard)** only. Marketplace products A (Provider), B (Customer), and C (Chatbot) are handled in separate services.
 
+## For stakeholders
+
+This product is the **Trust & Safety desk** for the TaskLocal marketplace. Customer and provider reviews sometimes get flagged as a problem. Moderators use this dashboard to see those flags, understand the booking behind them, and mark the ones they have already dealt with.
+
+### What it does
+
+- **Dashboard** — a snapshot of how many reviews exist, how many are flagged, and how many flags still need a person.
+- **Action needed** — the work queue. It shows only flagged reviews that have not been handled yet, oldest first, so nothing sits unnoticed.
+- **Reviews** — the full catalog. Search by review or booking ID, filter (including flagged vs not flagged), sort, and page through every review. Use this when you are looking something up, not when you are clearing the queue.
+- **Resolve** — the only action a moderator takes here. It marks a flagged item as handled. It does not delete the review or change the booking.
+
+Reviews that are not flagged cannot be marked handled. On the Reviews page, choosing **Not flagged** turns off the Handled filter for that reason.
+
+### How it works
+
+The app talks to the same shared TaskLocal database as the rest of the marketplace. It does not create its own copy of reviews or bookings. Opening a row shows the review text plus the related booking so a moderator can decide with context. Pagination and filters stay on the page; the review list scrolls in its own pane so the search bar does not disappear while you scan results.
+
+There is no customer-facing login in this app. It is an internal tool. Analytics on `/trends` are not built yet.
+
+### How to start it (non-technical)
+
+You need Node.js installed, this project folder on your computer, and database keys from the person who owns the TaskLocal Supabase project. Do not put those keys in email, chat, or git.
+
+1. Open a terminal in this project folder.
+2. Run `npm install` once, to download the app’s dependencies.
+3. Copy `.env.local.example` to a new file named `.env.local`. Ask the database owner to fill in the two keys (a public publishable key and a private service-role key). Leave the private key out of any shared document.
+4. Run `npm run dev`.
+5. In a browser, open [http://localhost:3000](http://localhost:3000). You should see the TaskLocal Trust & Safety dashboard.
+
+If the dashboard shows a connection error, the keys or network are the first things to check with the database owner.
+
+### Daily workflow
+
+1. Open the dashboard and check **Unhandled Flags**. That number is the work waiting for you.
+2. Click through to **Action needed**. Work from the top (oldest flags first).
+3. Click a row to expand the review and booking. If the same person has several open flags, a badge calls that out.
+4. When you have reviewed the issue, click **Resolve**. The item leaves the queue; the review itself stays in the catalog as handled.
+5. Use **Reviews** when you need to search a specific ID, look at already-handled flags, or browse reviews that were never flagged. Type an ID and press **Search reviews** / **Search bookings**, or press Enter.
+
+That is the whole loop: see the queue, open context, resolve, search the catalog when you need history.
+
 ## Working features
 
 Moderation dashboard for Product D, including the Reviews Console slice (shipped on `main` via [#8](https://github.com/justin-day-pursuit/TaskLocal-TrustAndSafety/pull/8)):

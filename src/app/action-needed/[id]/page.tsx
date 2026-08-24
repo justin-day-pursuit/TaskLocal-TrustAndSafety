@@ -62,9 +62,11 @@ export default async function FlaggedDetailPage({
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <BackLink href={queueHref} />
-        <ErrorBanner message={error} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="space-y-6">
+          <BackLink href={queueHref} />
+          <ErrorBanner message={error} />
+        </div>
       </div>
     );
   }
@@ -77,6 +79,7 @@ export default async function FlaggedDetailPage({
   const repeatFlagResult = await getRepeatFlagCountForReview(review.id);
 
   return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -173,6 +176,7 @@ export default async function FlaggedDetailPage({
           </p>
         )}
       </section>
+    </div>
     </div>
   );
 }

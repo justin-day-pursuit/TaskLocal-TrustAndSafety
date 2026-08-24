@@ -57,7 +57,7 @@ function buildReviewCatalogQuery(
     query = query.eq("flag", params.flag === "true");
   }
 
-  if (params.handled !== "all") {
+  if (params.handled !== "all" && params.flag !== "false") {
     query = query.eq("handled", params.handled === "true");
   }
 

@@ -167,12 +167,19 @@ function parseOptionalSearch(raw: string | undefined): string | undefined {
 export function parseReviewsCatalogParams(
   input: Record<string, string | string[] | undefined>
 ): ReviewsCatalogParams {
+  const flag = parseTriStateBoolean(firstString(input.flag));
+  let handled = parseTriStateBoolean(firstString(input.handled));
+
+  if (flag === "false") {
+    handled = "all";
+  }
+
   return {
     qReview: parseOptionalSearch(firstString(input.qReview)),
     qBooking: parseOptionalSearch(firstString(input.qBooking)),
     reviewerRole: parseReviewerRole(firstString(input.reviewerRole)),
-    flag: parseTriStateBoolean(firstString(input.flag)),
-    handled: parseTriStateBoolean(firstString(input.handled)),
+    flag,
+    handled,
     bookingStatus: parseBookingStatus(firstString(input.bookingStatus)),
     sort: parseSortField(firstString(input.sort)),
     dir: parseSortDirection(firstString(input.dir)),
@@ -209,7 +216,7 @@ export function serializeReviewsCatalogParams(
   if (params.flag !== "all") {
     appendParam(parts, "flag", params.flag);
   }
-  if (params.handled !== "all") {
+  if (params.handled !== "all" && params.flag !== "false") {
     appendParam(parts, "handled", params.handled);
   }
   if (params.bookingStatus !== "all") {
@@ -246,6 +253,11 @@ export function mergeReviewsCatalogParams(
   updates: Partial<ReviewsCatalogParams>
 ): ReviewsCatalogParams {
   const next: ReviewsCatalogParams = { ...current, ...updates };
+
+  if (next.flag === "false") {
+    next.handled = "all";
+  }
+
   const filterChanged = FILTER_KEYS.some((key) => {
     if (!(key in updates)) {
       return false;
