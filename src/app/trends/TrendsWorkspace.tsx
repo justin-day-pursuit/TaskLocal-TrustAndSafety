@@ -87,6 +87,10 @@ export function TrendsWorkspace({
     if (!autoGenerate) {
       return;
     }
+    if (loadError) {
+      router.replace("/trends");
+      return;
+    }
     if (initialReport) {
       router.replace("/trends");
       return;
@@ -101,7 +105,7 @@ export function TrendsWorkspace({
       });
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [autoGenerate, initialReport, router]);
+  }, [autoGenerate, initialReport, loadError, router]);
 
   const hasReport = report !== null;
   const showChange = Boolean(report?.insights.changeSinceLast.hasPrevious);
@@ -166,7 +170,7 @@ export function TrendsWorkspace({
         />
       ) : null}
 
-      {!hasReport && !isGenerating ? (
+      {!hasReport && !isGenerating && !error ? (
         <section className="rounded-lg border border-dashed border-zinc-300 bg-white p-8">
           <h3 className="text-lg font-medium text-zinc-900">No trend report yet</h3>
           <p className="mt-2 max-w-2xl text-sm text-zinc-500">

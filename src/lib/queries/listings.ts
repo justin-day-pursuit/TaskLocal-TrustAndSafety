@@ -16,7 +16,7 @@ export async function getListingById(id: string): Promise<{
       .maybeSingle();
 
     if (error) {
-      return queryFail(error.message, "Failed to load listing");
+      return queryFail(error, "Failed to load listing");
     }
 
     return queryOk((data as Listing | null) ?? null);
@@ -42,7 +42,7 @@ export async function getListingsByIds(listingIds: string[]): Promise<{
       .in("id", listingIds);
 
     if (error) {
-      return queryFail(error.message, "Failed to load listings");
+      return queryFail(error, "Failed to load listings");
     }
 
     return queryOk(data as Listing[]);

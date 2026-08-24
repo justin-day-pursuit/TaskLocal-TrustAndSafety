@@ -72,15 +72,19 @@ describe("buildReviewListPresentation", () => {
   });
 
   describe("/reviews catalog contract", () => {
-    it("uses the same helper: list visible with enrichment banner on bookings error", () => {
+    it("uses the same helper: list visible with enrichment banner on bookings timeout", () => {
       const presentation = buildReviewListPresentation(
         [sampleReview],
         null,
-        { data: null, error: "Timeout loading bookings" }
+        {
+          data: null,
+          error: "The operation timed out.",
+          failureKind: "timeout",
+        }
       );
 
       expect(presentation.showReviewList).toBe(true);
-      expect(presentation.enrichmentError).toBe("Timeout loading bookings");
+      expect(presentation.enrichmentError).toBe("The operation timed out.");
       expect(presentation.enrichmentFailureKind).toBe("timeout");
       expect(presentation.repeatFlagCounts).toEqual({});
     });

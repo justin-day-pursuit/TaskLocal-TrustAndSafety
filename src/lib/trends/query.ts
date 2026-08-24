@@ -47,7 +47,7 @@ async function fetchAllReviews(): Promise<{
         .range(offset, offset + POSTGREST_MAX_ROWS - 1);
 
       if (error) {
-        return queryFail(error.message, "Failed to load reviews");
+        return queryFail(error, "Failed to load reviews");
       }
 
       const page = (data ?? []) as ReviewRow[];
@@ -87,7 +87,7 @@ async function fetchServiceDatesByBookingId(
         .in("id", ids);
 
       if (error) {
-        return queryFail(error.message, "Failed to load service dates", serviceDates);
+        return queryFail(error, "Failed to load service dates", serviceDates);
       }
 
       for (const booking of data ?? []) {

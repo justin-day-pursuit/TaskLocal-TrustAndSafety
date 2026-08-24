@@ -31,6 +31,7 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
       persistWarning: null,
     };
   }
+  const apiKey = keyResult.key;
 
   const fetched = await fetchStrippedReviews();
   if (fetched.error || !fetched.data) {
@@ -44,6 +45,14 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
 
   const rows = fetched.data;
   const previousResult = await loadLastTrendReport();
+  if (previousResult.error) {
+    return {
+      data: null,
+      error: previousResult.error,
+      failureKind: previousResult.failureKind ?? "error",
+      persistWarning: null,
+    };
+  }
   const previous = previousResult.data;
   const delta = splitNewVsPrior(rows, previous?.watermark ?? null);
   const aggregates = computeTrendAggregates(rows);
@@ -59,15 +68,17 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
   if (rows.length > 0) {
     try {
       const gemini = await withTimeout(
-        analyzeWithGemini({
-          apiKey: keyResult.key,
-          rows,
-          aggregates,
-          newRows: delta.newRows,
-          previous,
-          hasPrevious: delta.hasPrevious,
-          newReviewCount: delta.newRows.length,
-        }),
+        (signal) =>
+          analyzeWithGemini({
+            apiKey,
+            rows,
+            aggregates,
+            newRows: delta.newRows,
+            previous,
+            hasPrevious: delta.hasPrevious,
+            newReviewCount: delta.newRows.length,
+            abortSignal: signal,
+          }),
         GEMINI_QUERY_TIMEOUT_MS
       );
 

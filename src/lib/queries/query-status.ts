@@ -111,16 +111,22 @@ function errorMessage(error: unknown): string {
 
 export function isTimeoutFailure(error: unknown): boolean {
   const name = errorName(error);
-  if (name === "AbortError" || name === "TimeoutError" || name === "DOMException") {
-    const message = errorMessage(error);
-    if (!message) {
-      return name === "AbortError" || name === "TimeoutError";
-    }
-    return /abort|timeout|timed out/i.test(message) || name === "TimeoutError" || name === "AbortError";
+  if (name === "AbortError" || name === "TimeoutError") {
+    return true;
   }
 
   const message = errorMessage(error);
-  return /timeout|timed out|\baborted\b|AbortError|TimeoutError/i.test(message);
+  if (name === "DOMException") {
+    return /timeout|timed out|aborted/i.test(message);
+  }
+
+  return (
+    /AbortError|TimeoutError/i.test(message) ||
+    /timed out/i.test(message) ||
+    /user aborted a request/i.test(message) ||
+    /signal is aborted/i.test(message) ||
+    /aborted \(timeout or manual cancellation\)/i.test(message)
+  );
 }
 
 export function classifyQueryFailure(error: unknown): ClassifiedFailure {
@@ -179,10 +185,12 @@ export function httpStatusForQueryFailure(
 }
 
 export async function withTimeout<T>(
-  promise: Promise<T>,
+  work: Promise<T> | ((signal: AbortSignal) => Promise<T>),
   timeoutMs: number
 ): Promise<T> {
   const signal = AbortSignal.timeout(timeoutMs);
+  const promise = typeof work === "function" ? work(signal) : work;
+
   return new Promise<T>((resolve, reject) => {
     const onAbort = () => {
       const timeoutError = new Error("The operation timed out.");
@@ -203,6 +211,10 @@ export async function withTimeout<T>(
       },
       (error: unknown) => {
         signal.removeEventListener("abort", onAbort);
+        if (signal.aborted || isTimeoutFailure(error)) {
+          onAbort();
+          return;
+        }
         reject(error);
       }
     );

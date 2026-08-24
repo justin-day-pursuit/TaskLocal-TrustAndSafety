@@ -11,7 +11,7 @@ export async function testConnection(): Promise<{
     const { error } = await supabase.from("Review").select("id").limit(1);
 
     if (error) {
-      const failure = queryFail(error.message, "Unknown connection error");
+      const failure = queryFail(error, "Unknown connection error");
       return {
         connected: false,
         error: failure.error,

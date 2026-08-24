@@ -87,7 +87,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (reviewError) {
-      return queryFail(reviewError.message, "Failed to compute repeat flag count");
+      return queryFail(reviewError, "Failed to compute repeat flag count");
     }
 
     if (!review) {
@@ -102,7 +102,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (bookingError) {
-      return queryFail(bookingError.message, "Failed to compute repeat flag count");
+      return queryFail(bookingError, "Failed to compute repeat flag count");
     }
 
     if (!booking) {
@@ -122,7 +122,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .eq("reviewerRole", typedReview.reviewerRole);
 
     if (flagsError) {
-      return queryFail(flagsError.message, "Failed to compute repeat flag count");
+      return queryFail(flagsError, "Failed to compute repeat flag count");
     }
 
     const reviews = (openFlaggedReviews ?? []) as Review[];
@@ -180,7 +180,7 @@ export async function getFlaggedReviews(reviewerRole?: ReviewerRole): Promise<{
     const { data, error } = await query;
 
     if (error) {
-      return queryFail(error.message, "Failed to load flagged reviews");
+      return queryFail(error, "Failed to load flagged reviews");
     }
 
     return queryOk(data as Review[]);
@@ -214,7 +214,7 @@ export async function getReviewStats(): Promise<{
 
     if (firstError) {
       return queryFail(
-        firstError.message,
+        firstError,
         "Failed to load review stats"
       );
     }
@@ -251,7 +251,7 @@ export async function getReviewDetail(reviewId: string): Promise<{
       .maybeSingle();
 
     if (reviewError) {
-      return queryFail(reviewError.message, "Failed to load review detail");
+      return queryFail(reviewError, "Failed to load review detail");
     }
 
     if (!review) {
@@ -266,7 +266,7 @@ export async function getReviewDetail(reviewId: string): Promise<{
       .maybeSingle();
 
     if (bookingError) {
-      return queryFail(bookingError.message, "Failed to load review detail");
+      return queryFail(bookingError, "Failed to load review detail");
     }
 
     const typedBooking = (booking as Booking | null) ?? null;
@@ -339,7 +339,7 @@ export async function listFlaggedReviewsWithBookings(): Promise<{
       .order("createdAt", { ascending: false });
 
     if (error) {
-      return queryFail(error.message, "Failed to load flagged reviews");
+      return queryFail(error, "Failed to load flagged reviews");
     }
 
     const reviews = (data ?? []) as Review[];
@@ -379,7 +379,7 @@ export async function resolveReview(id: string): Promise<{
       .maybeSingle();
 
     if (error) {
-      return queryFail(error.message, "Failed to resolve review");
+      return queryFail(error, "Failed to resolve review");
     }
 
     return queryOk((data as Review | null) ?? null);

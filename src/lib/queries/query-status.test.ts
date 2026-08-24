@@ -35,6 +35,19 @@ describe("classifyQueryFailure", () => {
     );
   });
 
+  it("does not treat Postgres abort/timeout wording as a fetch timeout", () => {
+    expect(isTimeoutFailure("current transaction is aborted")).toBe(false);
+    expect(classifyQueryFailure("current transaction is aborted").kind).toBe("error");
+  });
+
+  it("classifies a PostgREST abort object by message identity", () => {
+    expect(
+      classifyQueryFailure({
+        message: "AbortError: The user aborted a request.",
+      }).kind
+    ).toBe("timeout");
+  });
+
   it("classifies generic errors as error", () => {
     expect(classifyQueryFailure("permission denied")).toEqual({
       kind: "error",
@@ -79,5 +92,16 @@ describe("withTimeout", () => {
 
   it("resolves when the promise finishes in time", async () => {
     await expect(withTimeout(Promise.resolve("ok"), 1_000)).resolves.toBe("ok");
+  });
+
+  it("passes an abort signal into the work factory", async () => {
+    let seen: AbortSignal | undefined;
+    await expect(
+      withTimeout((signal) => {
+        seen = signal;
+        return Promise.resolve("ok");
+      }, 1_000)
+    ).resolves.toBe("ok");
+    expect(seen).toBeInstanceOf(AbortSignal);
   });
 });

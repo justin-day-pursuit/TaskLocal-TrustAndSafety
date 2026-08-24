@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
 
+import { isTimeoutFailure } from "@/lib/queries/query-status";
 import {
   getGeminiModelOverride,
   isAuthGeminiError,
@@ -93,6 +94,7 @@ export interface AnalyzeWithGeminiInput {
   previous: TrendReport | null;
   hasPrevious: boolean;
   newReviewCount: number;
+  abortSignal?: AbortSignal;
 }
 
 function buildPrompt(input: AnalyzeWithGeminiInput): string {
@@ -152,12 +154,14 @@ function buildPrompt(input: AnalyzeWithGeminiInput): string {
 async function generateOnModel(
   ai: GoogleGenAI,
   model: string,
-  prompt: string
+  prompt: string,
+  abortSignal?: AbortSignal
 ): Promise<string> {
   const response = await ai.models.generateContent({
     model,
     contents: prompt,
     config: {
+      abortSignal,
       temperature: 0.2,
       responseMimeType: "application/json",
       responseSchema: INSIGHTS_SCHEMA,
@@ -180,11 +184,20 @@ export async function analyzeWithGemini(
 
   for (const model of models) {
     try {
-      const text = await generateOnModel(ai, model, prompt);
+      const text = await generateOnModel(
+        ai,
+        model,
+        prompt,
+        input.abortSignal
+      );
       const insights = parseGeminiInsightsText(text);
       return { insights, modelUsed: model, error: null };
     } catch (error) {
       console.error(`[trends] Gemini ${model} failed`, error);
+
+      if (input.abortSignal?.aborted || isTimeoutFailure(error)) {
+        throw error;
+      }
 
       if (isAuthGeminiError(error)) {
         return {

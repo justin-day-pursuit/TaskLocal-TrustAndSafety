@@ -119,9 +119,9 @@ export async function getReviewCatalog(
 ): Promise<PaginatedReviewListResult> {
   try {
     if (requiresBookingFirstQuery(params)) {
-      return getReviewCatalogBookingFirst(params);
+      return await getReviewCatalogBookingFirst(params);
     }
-    return getReviewCatalogReviewFirst(params);
+    return await getReviewCatalogReviewFirst(params);
   } catch (error) {
     const failure = queryFail(error, "Failed to load review catalog");
     return emptyCatalogResult(params, {
@@ -141,7 +141,7 @@ async function getReviewCatalogReviewFirst(
   const { count, error: countError } = await countQuery;
 
   if (countError) {
-    const failure = queryFail(countError.message, "Failed to load review catalog");
+    const failure = queryFail(countError, "Failed to load review catalog");
     return emptyCatalogResult(params, {
       error: failure.error,
       failureKind: failure.failureKind,
@@ -166,7 +166,7 @@ async function getReviewCatalogReviewFirst(
   const { data, error } = await query.range(from, to);
 
   if (error) {
-    const failure = queryFail(error.message, "Failed to load review catalog");
+    const failure = queryFail(error, "Failed to load review catalog");
     return emptyCatalogResult(params, {
       error: failure.error,
       failureKind: failure.failureKind,
@@ -224,7 +224,7 @@ async function getReviewCatalogBookingFirst(
   );
 
   if (error) {
-    const failure = queryFail(error.message, "Failed to load review catalog");
+    const failure = queryFail(error, "Failed to load review catalog");
     return emptyCatalogResult(params, {
       error: failure.error,
       failureKind: failure.failureKind,
@@ -314,7 +314,7 @@ export async function getFlaggedReviewsPaginated(params: {
 
     if (countError) {
       const failure = queryFail(
-        countError.message,
+        countError,
         "Failed to load flagged reviews"
       );
       return emptyCatalogResult(flaggedQueueParams(params), {
@@ -342,7 +342,7 @@ export async function getFlaggedReviewsPaginated(params: {
     const { data, error } = await query;
 
     if (error) {
-      const failure = queryFail(error.message, "Failed to load flagged reviews");
+      const failure = queryFail(error, "Failed to load flagged reviews");
       return emptyCatalogResult(flaggedQueueParams(params), {
         error: failure.error,
         failureKind: failure.failureKind,

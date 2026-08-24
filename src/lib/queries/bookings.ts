@@ -68,7 +68,7 @@ export async function queryBookingsForReviewCatalog(
     const { data, error } = await query;
 
     if (error) {
-      const failure = queryFail(error.message, "Failed to load bookings", []);
+      const failure = queryFail(error, "Failed to load bookings", []);
       return {
         data: [],
         error: failure.error,
@@ -115,7 +115,7 @@ export async function getBookingsByIds(bookingIds: string[]): Promise<{
       .in("id", bookingIds);
 
     if (error) {
-      return queryFail(error.message, "Failed to load bookings");
+      return queryFail(error, "Failed to load bookings");
     }
 
     return queryOk(data as Booking[]);

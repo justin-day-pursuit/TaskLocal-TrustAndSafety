@@ -145,7 +145,7 @@ async function loadFromSupabaseStorage(): Promise<{
       if (isMissingStorageObject(error.message)) {
         return queryOk(null);
       }
-      return queryFail(error.message, "Failed to load trend report");
+      return queryFail(error, "Failed to load trend report");
     }
 
     if (!data) {
