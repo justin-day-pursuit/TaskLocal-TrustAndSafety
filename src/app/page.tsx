@@ -30,10 +30,18 @@ export default async function DashboardPage() {
             marketplace.
           </p>
         </div>
-        <ConnectionStatus
-          connected={connection.connected}
-          error={connection.error}
-        />
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          <ConnectionStatus
+            connected={connection.connected}
+            error={connection.error}
+          />
+          <Link
+            href="/trends?generate=1"
+            className="inline-flex items-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+          >
+            Generate trend report
+          </Link>
+        </div>
       </div>
 
       {errors.length > 0 ? (
@@ -89,6 +97,16 @@ export default async function DashboardPage() {
           <li>
             Review detail — full review, booking, and listing context before
             resolving
+          </li>
+          <li>
+            <Link
+              href="/trends?generate=1"
+              className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+            >
+              Generate trend report
+            </Link>{" "}
+            — Gemini analysis of stripped reviews: flag trends, sentiment,
+            keywords, and an action plan
           </li>
         </ul>
       </section>
