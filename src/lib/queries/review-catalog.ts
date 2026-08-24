@@ -1,4 +1,5 @@
 import { queryBookingsForReviewCatalog, getBookingsByIds } from "@/lib/queries/bookings";
+import { queryFail, type QueryFailureKind } from "@/lib/queries/query-status";
 import {
   collectUniqueBookingIds,
   sortReviewsByBookingField,
@@ -32,8 +33,10 @@ export interface PaginatedReviewListResult {
   display: PaginationDisplay;
   bookings: Booking[];
   bookingsError: string | null;
+  bookingsFailureKind: QueryFailureKind | null;
   postgrestCapHit: boolean;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }
 
 function buildReviewCatalogQuery(
@@ -80,12 +83,14 @@ function buildReviewCatalogQuery(
 async function enrichReviewsWithBookings(reviews: Review[]): Promise<{
   bookings: Booking[];
   bookingsError: string | null;
+  bookingsFailureKind: QueryFailureKind | null;
 }> {
   const bookingIds = collectUniqueBookingIds(reviews);
-  const { data, error } = await getBookingsByIds(bookingIds);
+  const { data, error, failureKind } = await getBookingsByIds(bookingIds);
   return {
     bookings: data ?? [],
     bookingsError: error,
+    bookingsFailureKind: failureKind,
   };
 }
 
@@ -101,8 +106,10 @@ function emptyCatalogResult(
     display: computePaginationDisplay(params.page, params.pageSize, 0),
     bookings: [],
     bookingsError: null,
+    bookingsFailureKind: null,
     postgrestCapHit: false,
     error: null,
+    failureKind: null,
     ...overrides,
   };
 }
@@ -116,9 +123,11 @@ export async function getReviewCatalog(
     }
     return getReviewCatalogReviewFirst(params);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load review catalog";
-    return emptyCatalogResult(params, { error: message });
+    const failure = queryFail(error, "Failed to load review catalog");
+    return emptyCatalogResult(params, {
+      error: failure.error,
+      failureKind: failure.failureKind,
+    });
   }
 }
 
@@ -132,7 +141,11 @@ async function getReviewCatalogReviewFirst(
   const { count, error: countError } = await countQuery;
 
   if (countError) {
-    return emptyCatalogResult(params, { error: countError.message });
+    const failure = queryFail(countError.message, "Failed to load review catalog");
+    return emptyCatalogResult(params, {
+      error: failure.error,
+      failureKind: failure.failureKind,
+    });
   }
 
   const totalCount = count ?? 0;
@@ -153,7 +166,11 @@ async function getReviewCatalogReviewFirst(
   const { data, error } = await query.range(from, to);
 
   if (error) {
-    return emptyCatalogResult(params, { error: error.message });
+    const failure = queryFail(error.message, "Failed to load review catalog");
+    return emptyCatalogResult(params, {
+      error: failure.error,
+      failureKind: failure.failureKind,
+    });
   }
 
   const reviews = (data ?? []) as Review[];
@@ -167,8 +184,10 @@ async function getReviewCatalogReviewFirst(
     display: computePaginationDisplay(page, params.pageSize, totalCount),
     bookings: enrichment.bookings,
     bookingsError: enrichment.bookingsError,
+    bookingsFailureKind: enrichment.bookingsFailureKind,
     postgrestCapHit: totalCount >= POSTGREST_MAX_ROWS,
     error: null,
+    failureKind: null,
   };
 }
 
@@ -184,7 +203,10 @@ async function getReviewCatalogBookingFirst(
   });
 
   if (bookingResult.error) {
-    return emptyCatalogResult(params, { error: bookingResult.error });
+    return emptyCatalogResult(params, {
+      error: bookingResult.error,
+      failureKind: bookingResult.failureKind,
+    });
   }
 
   const bookings = bookingResult.data;
@@ -202,8 +224,10 @@ async function getReviewCatalogBookingFirst(
   );
 
   if (error) {
+    const failure = queryFail(error.message, "Failed to load review catalog");
     return emptyCatalogResult(params, {
-      error: error.message,
+      error: failure.error,
+      failureKind: failure.failureKind,
       postgrestCapHit: bookingResult.postgrestCapHit,
     });
   }
@@ -245,9 +269,11 @@ async function getReviewCatalogBookingFirst(
     display: computePaginationDisplay(page, params.pageSize, totalCount),
     bookings: enrichment.bookings,
     bookingsError: enrichment.bookingsError,
+    bookingsFailureKind: enrichment.bookingsFailureKind,
     postgrestCapHit:
       bookingResult.postgrestCapHit || totalCount >= POSTGREST_MAX_ROWS,
     error: null,
+    failureKind: null,
   };
 }
 
@@ -287,8 +313,13 @@ export async function getFlaggedReviewsPaginated(params: {
     const { count, error: countError } = await countQuery;
 
     if (countError) {
+      const failure = queryFail(
+        countError.message,
+        "Failed to load flagged reviews"
+      );
       return emptyCatalogResult(flaggedQueueParams(params), {
-        error: countError.message,
+        error: failure.error,
+        failureKind: failure.failureKind,
       });
     }
 
@@ -311,8 +342,10 @@ export async function getFlaggedReviewsPaginated(params: {
     const { data, error } = await query;
 
     if (error) {
+      const failure = queryFail(error.message, "Failed to load flagged reviews");
       return emptyCatalogResult(flaggedQueueParams(params), {
-        error: error.message,
+        error: failure.error,
+        failureKind: failure.failureKind,
       });
     }
 
@@ -327,12 +360,16 @@ export async function getFlaggedReviewsPaginated(params: {
       display: computePaginationDisplay(page, params.pageSize, totalCount),
       bookings: enrichment.bookings,
       bookingsError: enrichment.bookingsError,
+      bookingsFailureKind: enrichment.bookingsFailureKind,
       postgrestCapHit: totalCount >= POSTGREST_MAX_ROWS,
       error: null,
+      failureKind: null,
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load flagged reviews";
-    return emptyCatalogResult(flaggedQueueParams(params), { error: message });
+    const failure = queryFail(error, "Failed to load flagged reviews");
+    return emptyCatalogResult(flaggedQueueParams(params), {
+      error: failure.error,
+      failureKind: failure.failureKind,
+    });
   }
 }

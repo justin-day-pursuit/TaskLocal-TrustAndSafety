@@ -1,4 +1,5 @@
 import { buildIlikeOrFilter } from "@/lib/postgrest/ilike-or-filter";
+import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-status";
 import { createServerClient } from "@/lib/supabase/server";
 import { POSTGREST_MAX_ROWS } from "@/lib/reviews/date-filters";
 import type { ReviewSortField, SortDirection } from "@/lib/reviews/search-params";
@@ -15,6 +16,7 @@ export interface BookingQueryOptions {
 export interface BookingQueryResult {
   data: Booking[];
   error: string | null;
+  failureKind: QueryFailureKind | null;
   /** True when the booking-side result set hit the PostgREST row cap. */
   postgrestCapHit: boolean;
   totalFetched: number;
@@ -66,9 +68,11 @@ export async function queryBookingsForReviewCatalog(
     const { data, error } = await query;
 
     if (error) {
+      const failure = queryFail(error.message, "Failed to load bookings", []);
       return {
         data: [],
-        error: error.message,
+        error: failure.error,
+        failureKind: failure.failureKind,
         postgrestCapHit: false,
         totalFetched: 0,
       };
@@ -78,15 +82,16 @@ export async function queryBookingsForReviewCatalog(
     return {
       data: bookings,
       error: null,
+      failureKind: null,
       postgrestCapHit: bookings.length >= limit,
       totalFetched: bookings.length,
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load bookings";
+    const failure = queryFail(error, "Failed to load bookings", []);
     return {
       data: [],
-      error: message,
+      error: failure.error,
+      failureKind: failure.failureKind,
       postgrestCapHit: false,
       totalFetched: 0,
     };
@@ -96,9 +101,10 @@ export async function queryBookingsForReviewCatalog(
 export async function getBookingsByIds(bookingIds: string[]): Promise<{
   data: Booking[] | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   if (bookingIds.length === 0) {
-    return { data: [], error: null };
+    return queryOk([]);
   }
 
   try {
@@ -109,13 +115,11 @@ export async function getBookingsByIds(bookingIds: string[]): Promise<{
       .in("id", bookingIds);
 
     if (error) {
-      return { data: null, error: error.message };
+      return queryFail(error.message, "Failed to load bookings");
     }
 
-    return { data: data as Booking[], error: null };
+    return queryOk(data as Booking[]);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load bookings";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load bookings");
   }
 }

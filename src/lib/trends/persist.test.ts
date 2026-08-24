@@ -35,14 +35,20 @@ describe("trend report persist", () => {
     expect(raw).toContain("gemini-3.5-flash");
 
     const loaded = await loadLastTrendReport(filePath);
-    expect(loaded?.modelUsed).toBe("gemini-3.5-flash");
-    expect(loaded?.insights.needsWork.length).toBeGreaterThan(0);
+    expect(loaded.error).toBeNull();
+    expect(loaded.failureKind).toBeNull();
+    expect(loaded.data?.modelUsed).toBe("gemini-3.5-flash");
+    expect(loaded.data?.insights.needsWork.length).toBeGreaterThan(0);
   });
 
-  it("returns null when no report file exists", async () => {
+  it("returns an empty success when no report file exists", async () => {
     const loaded = await loadLastTrendReport(
       path.join(os.tmpdir(), "missing-trends-report.json")
     );
-    expect(loaded).toBeNull();
+    expect(loaded).toEqual({
+      data: null,
+      error: null,
+      failureKind: null,
+    });
   });
 });

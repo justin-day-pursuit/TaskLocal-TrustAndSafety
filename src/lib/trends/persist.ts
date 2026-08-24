@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-status";
 import { createServerClient } from "@/lib/supabase/server";
 import { isGeminiInsights } from "@/lib/trends/insights";
 import type { TrendAggregates, TrendReport, TrendWatermark } from "@/lib/trends/types";
@@ -56,20 +57,30 @@ export function isTrendReport(value: unknown): value is TrendReport {
   );
 }
 
-async function loadFromFile(filePath: string): Promise<TrendReport | null> {
+async function loadFromFile(filePath: string): Promise<{
+  data: TrendReport | null;
+  error: string | null;
+  failureKind: QueryFailureKind | null;
+}> {
   try {
     const raw = await readFile(filePath, "utf8");
     const parsed: unknown = JSON.parse(raw);
-    return isTrendReport(parsed) ? parsed : null;
+    if (!isTrendReport(parsed)) {
+      return queryFail(
+        "Trend report file is invalid.",
+        "Failed to load trend report"
+      );
+    }
+    return queryOk(parsed);
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
         ? String((error as { code?: string }).code)
         : "";
-    if (code !== "ENOENT") {
-      console.error("[trends] Failed to read local trend report", error);
+    if (code === "ENOENT") {
+      return queryOk(null);
     }
-    return null;
+    return queryFail(error, "Failed to load trend report");
   }
 }
 
@@ -113,22 +124,44 @@ async function ensureTrendsBucket(): Promise<{ error: string | null }> {
   }
 }
 
-async function loadFromSupabaseStorage(): Promise<TrendReport | null> {
+function isMissingStorageObject(message: string): boolean {
+  return /not found|object not found|no such file|does not exist/i.test(
+    message
+  );
+}
+
+async function loadFromSupabaseStorage(): Promise<{
+  data: TrendReport | null;
+  error: string | null;
+  failureKind: QueryFailureKind | null;
+}> {
   try {
     const supabase = createServerClient();
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .download(STORAGE_OBJECT);
 
-    if (error || !data) {
-      return null;
+    if (error) {
+      if (isMissingStorageObject(error.message)) {
+        return queryOk(null);
+      }
+      return queryFail(error.message, "Failed to load trend report");
+    }
+
+    if (!data) {
+      return queryOk(null);
     }
 
     const parsed: unknown = JSON.parse(await data.text());
-    return isTrendReport(parsed) ? parsed : null;
+    if (!isTrendReport(parsed)) {
+      return queryFail(
+        "Trend report in storage is invalid.",
+        "Failed to load trend report"
+      );
+    }
+    return queryOk(parsed);
   } catch (error) {
-    console.error("[trends] Failed to load report from Supabase Storage", error);
-    return null;
+    return queryFail(error, "Failed to load trend report");
   }
 }
 
@@ -164,16 +197,30 @@ async function saveToSupabaseStorage(
 
 export async function loadLastTrendReport(
   filePath?: string
-): Promise<TrendReport | null> {
+): Promise<{
+  data: TrendReport | null;
+  error: string | null;
+  failureKind: QueryFailureKind | null;
+}> {
   if (filePath) {
     return loadFromFile(filePath);
   }
 
   const stored = await loadFromSupabaseStorage();
-  if (stored) {
+  if (stored.data) {
     return stored;
   }
-  return loadFromFile(DEFAULT_TREND_REPORT_PATH);
+
+  const local = await loadFromFile(DEFAULT_TREND_REPORT_PATH);
+  if (local.data) {
+    return local;
+  }
+
+  if (stored.error) {
+    return stored;
+  }
+
+  return local;
 }
 
 export async function saveTrendReport(

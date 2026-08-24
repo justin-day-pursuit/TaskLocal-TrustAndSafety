@@ -6,6 +6,11 @@ import { emptyInsights, groundChangeSinceLast } from "@/lib/trends/insights";
 import { loadLastTrendReport, saveTrendReport } from "@/lib/trends/persist";
 import { fetchStrippedReviews } from "@/lib/trends/query";
 import type { GenerateTrendsResult, StrippedReview, TrendReport } from "@/lib/trends/types";
+import {
+  GEMINI_QUERY_TIMEOUT_MS,
+  toQueryFailure,
+  withTimeout,
+} from "@/lib/queries/query-status";
 
 const GROUNDING_SAMPLE_SIZE = 40;
 
@@ -19,7 +24,12 @@ function mostRecentRows(rows: StrippedReview[], limit: number): StrippedReview[]
 export async function generateTrendReport(): Promise<GenerateTrendsResult> {
   const keyResult = getGeminiApiKey();
   if (keyResult.error || !keyResult.key) {
-    return { data: null, error: keyResult.error, persistWarning: null };
+    return {
+      data: null,
+      error: keyResult.error,
+      failureKind: "error",
+      persistWarning: null,
+    };
   }
 
   const fetched = await fetchStrippedReviews();
@@ -27,12 +37,14 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
     return {
       data: null,
       error: fetched.error ?? "Failed to load reviews.",
+      failureKind: fetched.failureKind ?? "error",
       persistWarning: null,
     };
   }
 
   const rows = fetched.data;
-  const previous = await loadLastTrendReport();
+  const previousResult = await loadLastTrendReport();
+  const previous = previousResult.data;
   const delta = splitNewVsPrior(rows, previous?.watermark ?? null);
   const aggregates = computeTrendAggregates(rows);
   const watermark = buildWatermark(rows);
@@ -45,26 +57,51 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
   let modelUsed = "none (no reviews)";
 
   if (rows.length > 0) {
-    const gemini = await analyzeWithGemini({
-      apiKey: keyResult.key,
-      rows,
-      aggregates,
-      newRows: delta.newRows,
-      previous,
-      hasPrevious: delta.hasPrevious,
-      newReviewCount: delta.newRows.length,
-    });
+    try {
+      const gemini = await withTimeout(
+        analyzeWithGemini({
+          apiKey: keyResult.key,
+          rows,
+          aggregates,
+          newRows: delta.newRows,
+          previous,
+          hasPrevious: delta.hasPrevious,
+          newReviewCount: delta.newRows.length,
+        }),
+        GEMINI_QUERY_TIMEOUT_MS
+      );
 
-    if (gemini.error || !gemini.insights) {
-      return { data: null, error: gemini.error, persistWarning: null };
+      if (gemini.error || !gemini.insights) {
+        const failure = toQueryFailure(
+          gemini.error ?? "Failed to generate the trend report.",
+          "Failed to generate the trend report."
+        );
+        return {
+          data: null,
+          error: failure.error,
+          failureKind: failure.failureKind,
+          persistWarning: null,
+        };
+      }
+
+      insights = groundChangeSinceLast(
+        gemini.insights,
+        delta.hasPrevious,
+        delta.newRows.length
+      );
+      modelUsed = gemini.modelUsed;
+    } catch (error) {
+      const failure = toQueryFailure(
+        error,
+        "Failed to generate the trend report."
+      );
+      return {
+        data: null,
+        error: failure.error,
+        failureKind: failure.failureKind,
+        persistWarning: null,
+      };
     }
-
-    insights = groundChangeSinceLast(
-      gemini.insights,
-      delta.hasPrevious,
-      delta.newRows.length
-    );
-    modelUsed = gemini.modelUsed;
   }
 
   const report: TrendReport = {
@@ -88,6 +125,7 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
   return {
     data: report,
     error: null,
+    failureKind: null,
     persistWarning: saved.error,
   };
 }

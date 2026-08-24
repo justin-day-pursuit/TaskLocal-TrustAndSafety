@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { fetchWithDbTimeout } from "@/lib/queries/query-status";
 import { getServiceRoleEnv } from "@/lib/supabase/env";
 
 /**
@@ -9,6 +10,9 @@ import { getServiceRoleEnv } from "@/lib/supabase/env";
 export function createServiceRoleClient() {
   const { url, serviceRoleKey } = getServiceRoleEnv();
   return createClient(url, serviceRoleKey, {
+    global: {
+      fetch: fetchWithDbTimeout,
+    },
     auth: {
       persistSession: false,
       autoRefreshToken: false,

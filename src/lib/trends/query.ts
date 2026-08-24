@@ -1,4 +1,5 @@
 import { POSTGREST_MAX_ROWS } from "@/lib/reviews/date-filters";
+import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-status";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Review } from "@/lib/types/database";
 import { stripReviewForAnalysis } from "@/lib/trends/strip";
@@ -28,6 +29,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 async function fetchAllReviews(): Promise<{
   data: ReviewRow[] | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   try {
     const supabase = createServerClient();
@@ -45,7 +47,7 @@ async function fetchAllReviews(): Promise<{
         .range(offset, offset + POSTGREST_MAX_ROWS - 1);
 
       if (error) {
-        return { data: null, error: error.message };
+        return queryFail(error.message, "Failed to load reviews");
       }
 
       const page = (data ?? []) as ReviewRow[];
@@ -57,20 +59,22 @@ async function fetchAllReviews(): Promise<{
       offset += POSTGREST_MAX_ROWS;
     }
 
-    return { data: rows, error: null };
+    return queryOk(rows);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load reviews";
-    return { data: null, error: message };
+    return queryFail(error, "Failed to load reviews");
   }
 }
 
 async function fetchServiceDatesByBookingId(
   bookingIds: string[]
-): Promise<{ data: Map<string, string | null>; error: string | null }> {
+): Promise<{
+  data: Map<string, string | null>;
+  error: string | null;
+  failureKind: QueryFailureKind | null;
+}> {
   const serviceDates = new Map<string, string | null>();
   if (bookingIds.length === 0) {
-    return { data: serviceDates, error: null };
+    return queryOk(serviceDates);
   }
 
   try {
@@ -83,7 +87,7 @@ async function fetchServiceDatesByBookingId(
         .in("id", ids);
 
       if (error) {
-        return { data: serviceDates, error: error.message };
+        return queryFail(error.message, "Failed to load service dates", serviceDates);
       }
 
       for (const booking of data ?? []) {
@@ -92,21 +96,24 @@ async function fetchServiceDatesByBookingId(
       }
     }
 
-    return { data: serviceDates, error: null };
+    return queryOk(serviceDates);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load service dates";
-    return { data: serviceDates, error: message };
+    return queryFail(error, "Failed to load service dates", serviceDates);
   }
 }
 
 export async function fetchStrippedReviews(): Promise<{
   data: StrippedReview[] | null;
   error: string | null;
+  failureKind: QueryFailureKind | null;
 }> {
   const reviewsResult = await fetchAllReviews();
   if (reviewsResult.error || !reviewsResult.data) {
-    return { data: null, error: reviewsResult.error };
+    return {
+      data: null,
+      error: reviewsResult.error,
+      failureKind: reviewsResult.failureKind,
+    };
   }
 
   const bookingIds = [
@@ -114,7 +121,11 @@ export async function fetchStrippedReviews(): Promise<{
   ];
   const datesResult = await fetchServiceDatesByBookingId(bookingIds);
   if (datesResult.error) {
-    return { data: null, error: datesResult.error };
+    return {
+      data: null,
+      error: datesResult.error,
+      failureKind: datesResult.failureKind,
+    };
   }
 
   const stripped = reviewsResult.data.map((review) =>
@@ -124,5 +135,5 @@ export async function fetchStrippedReviews(): Promise<{
     )
   );
 
-  return { data: stripped, error: null };
+  return queryOk(stripped);
 }

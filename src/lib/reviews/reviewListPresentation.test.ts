@@ -37,7 +37,22 @@ describe("buildReviewListPresentation", () => {
 
       expect(presentation.showReviewList).toBe(false);
       expect(presentation.primaryError).toBe("Reviews unavailable");
+      expect(presentation.primaryFailureKind).toBe("error");
       expect(presentation.enrichmentError).toBeNull();
+      expect(presentation.enrichmentFailureKind).toBeNull();
+    });
+
+    it("blocks the list with a timeout kind when the primary query times out", () => {
+      const presentation = buildReviewListPresentation(
+        null,
+        "The operation timed out.",
+        null,
+        "timeout"
+      );
+
+      expect(presentation.showReviewList).toBe(false);
+      expect(presentation.primaryFailureKind).toBe("timeout");
+      expect(presentation.enrichmentFailureKind).toBeNull();
     });
 
     it("still renders the list when bookings enrichment fails", () => {
@@ -49,7 +64,9 @@ describe("buildReviewListPresentation", () => {
 
       expect(presentation.showReviewList).toBe(true);
       expect(presentation.primaryError).toBeNull();
+      expect(presentation.primaryFailureKind).toBeNull();
       expect(presentation.enrichmentError).toBe("Bookings fetch failed");
+      expect(presentation.enrichmentFailureKind).toBe("error");
       expect(presentation.repeatFlagCounts).toEqual({});
     });
   });
@@ -64,6 +81,7 @@ describe("buildReviewListPresentation", () => {
 
       expect(presentation.showReviewList).toBe(true);
       expect(presentation.enrichmentError).toBe("Timeout loading bookings");
+      expect(presentation.enrichmentFailureKind).toBe("timeout");
       expect(presentation.repeatFlagCounts).toEqual({});
     });
 

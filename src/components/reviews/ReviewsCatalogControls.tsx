@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent, type TransitionStartFunction } from "react";
 
 import { BOOKING_STATUSES, REVIEWER_ROLES } from "@/lib/constants/enums";
 import {
@@ -20,6 +20,7 @@ import {
 
 interface ReviewsCatalogControlsProps {
   params: ReviewsCatalogParams;
+  startTransition?: TransitionStartFunction;
 }
 
 function navigate(
@@ -111,9 +112,13 @@ function CatalogSearchForm({
   );
 }
 
-export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) {
+export function ReviewsCatalogControls({
+  params,
+  startTransition: startTransitionProp,
+}: ReviewsCatalogControlsProps) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
+  const [, localStartTransition] = useTransition();
+  const startTransition = startTransitionProp ?? localStartTransition;
 
   function pushUpdates(updates: Partial<ReviewsCatalogParams>) {
     const next = mergeReviewsCatalogParams(params, updates);
@@ -131,17 +136,19 @@ export function ReviewsCatalogControls({ params }: ReviewsCatalogControlsProps) 
   }
 
   function clearFilters() {
-    navigate(router, params, {
-      reviewerRole: "all",
-      flag: "all",
-      handled: "all",
-      bookingStatus: "all",
-      sort: DEFAULT_SORT,
-      dir: DEFAULT_DIR,
-      createdWithin: "all",
-      createdMonth: undefined,
-      page: DEFAULT_PAGE,
-      pageSize: params.pageSize,
+    startTransition(() => {
+      navigate(router, params, {
+        reviewerRole: "all",
+        flag: "all",
+        handled: "all",
+        bookingStatus: "all",
+        sort: DEFAULT_SORT,
+        dir: DEFAULT_DIR,
+        createdWithin: "all",
+        createdMonth: undefined,
+        page: DEFAULT_PAGE,
+        pageSize: params.pageSize,
+      });
     });
   }
 

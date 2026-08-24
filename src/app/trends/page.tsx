@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { TrendsWorkspace } from "@/app/trends/TrendsWorkspace";
+import { QueryLoadingStatus } from "@/components/ui/QueryCallStatus";
 import { loadLastTrendReport } from "@/lib/trends/persist";
 
 export const dynamic = "force-dynamic";
@@ -15,14 +18,24 @@ export default async function TrendsPage({ searchParams }: TrendsPageProps) {
   const autoGenerate =
     generateParam === "1" || generateParam === "true";
 
-  const initialReport = await loadLastTrendReport();
-
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <TrendsWorkspace
-        initialReport={initialReport}
-        autoGenerate={autoGenerate}
-      />
+      <Suspense fallback={<QueryLoadingStatus copyKey="trendReport" />}>
+        <TrendsPageData autoGenerate={autoGenerate} />
+      </Suspense>
     </div>
+  );
+}
+
+async function TrendsPageData({ autoGenerate }: { autoGenerate: boolean }) {
+  const loaded = await loadLastTrendReport();
+
+  return (
+    <TrendsWorkspace
+      initialReport={loaded.data}
+      autoGenerate={autoGenerate}
+      loadError={loaded.error}
+      loadFailureKind={loaded.failureKind}
+    />
   );
 }
