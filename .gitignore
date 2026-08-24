@@ -46,3 +46,6 @@ next-env.d.ts
 
 # isolated worker clones for parallel orchestration
 .worktrees/
+
+# persisted Gemini trend report (local, not committed)
+/data/trends-last-report.json
