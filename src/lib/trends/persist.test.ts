@@ -16,7 +16,12 @@ describe("trend report persist", () => {
     const report: TrendReport = {
       generatedAt: "2026-08-24T00:00:00.000Z",
       modelUsed: "gemini-3.5-flash",
-      watermark: { rowCount: 0, newestCreated: null },
+      watermark: {
+        rowCount: 0,
+        newestCreated: null,
+        comparable: false,
+        fingerprints: [],
+      },
       aggregates: computeTrendAggregates([]),
       insights: emptyInsights(),
       groundingSample: [],

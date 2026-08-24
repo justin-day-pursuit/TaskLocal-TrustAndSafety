@@ -70,7 +70,7 @@ export function BarChart({
         const x = padding.left + index * barWidth + gap / 2;
         const y = padding.top + innerHeight - barHeight;
         return (
-          <g key={point.label}>
+          <g key={`${point.label}-${index}`}>
             <rect
               x={x}
               y={y}

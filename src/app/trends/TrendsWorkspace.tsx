@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { BarChart } from "@/components/trends/BarChart";
@@ -18,6 +18,8 @@ interface TrendsWorkspaceProps {
   autoGenerate: boolean;
 }
 
+let autoGenerateStarted = false;
+
 function formatGeneratedAt(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
     dateStyle: "medium",
@@ -29,6 +31,13 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function truncateLabel(label: string, max = 16): string {
+  if (label.length <= max) {
+    return label;
+  }
+  return `${label.slice(0, max)}…`;
+}
+
 export function TrendsWorkspace({
   initialReport,
   autoGenerate,
@@ -36,43 +45,48 @@ export function TrendsWorkspace({
   const router = useRouter();
   const [report, setReport] = useState<TrendReport | null>(initialReport);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const didAutoGenerate = useRef(false);
+  const [persistWarning, setPersistWarning] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  function generate() {
+  async function runGenerate() {
     setError(null);
-    startTransition(async () => {
+    setPersistWarning(null);
+    setIsGenerating(true);
+    try {
       const result = await generateTrendsReportAction();
       if (result.error || !result.data) {
         setError(result.error ?? "Failed to generate the trend report.");
         return;
       }
       setReport(result.data);
-    });
+      setPersistWarning(result.persistWarning);
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   useEffect(() => {
-    if (!autoGenerate || didAutoGenerate.current) {
+    if (!autoGenerate) {
       return;
     }
-    didAutoGenerate.current = true;
-    setError(null);
-    startTransition(async () => {
-      const result = await generateTrendsReportAction();
-      if (result.error || !result.data) {
-        setError(result.error ?? "Failed to generate the trend report.");
-      } else {
-        setReport(result.data);
-      }
+    if (initialReport) {
       router.replace("/trends");
-    });
-  }, [autoGenerate, router]);
+      return;
+    }
+    if (autoGenerateStarted) {
+      return;
+    }
+    autoGenerateStarted = true;
+    const timeout = window.setTimeout(() => {
+      void runGenerate().then(() => {
+        router.replace("/trends");
+      });
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [autoGenerate, initialReport, router]);
 
   const hasReport = report !== null;
-  const showChange = Boolean(
-    report?.insights.changeSinceLast.hasPrevious ||
-      (report?.insights.changeSinceLast.newReviewCount ?? 0) > 0
-  );
+  const showChange = Boolean(report?.insights.changeSinceLast.hasPrevious);
 
   return (
     <div className="space-y-6">
@@ -80,8 +94,9 @@ export function TrendsWorkspace({
         <div>
           <h2 className="text-2xl font-semibold text-zinc-900">Trends</h2>
           <p className="mt-1 text-sm text-zinc-500">
-            On-demand Gemini analysis of stripped review data. Unique IDs are
-            removed before the request leaves the server.
+            On-demand Gemini analysis. Review IDs and booking keys are removed
+            first. Comments and flag reasons are sent to Google and may contain
+            personal details.
           </p>
           {report ? (
             <p className="mt-2 text-xs text-zinc-500">
@@ -94,11 +109,13 @@ export function TrendsWorkspace({
         </div>
         <button
           type="button"
-          onClick={generate}
-          disabled={isPending}
+          onClick={() => {
+            void runGenerate();
+          }}
+          disabled={isGenerating}
           className="inline-flex shrink-0 items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
         >
-          {isPending
+          {isGenerating
             ? "Generating…"
             : hasReport
               ? "Regenerate trend report"
@@ -107,22 +124,27 @@ export function TrendsWorkspace({
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}
+      {persistWarning ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {persistWarning}
+        </div>
+      ) : null}
 
-      {isPending ? (
+      {isGenerating ? (
         <div className="rounded-lg border border-dashed border-zinc-300 bg-white p-6 text-sm text-zinc-600">
           Analyzing stripped reviews with Gemini. This can take a minute. Chart
           numbers are computed locally so they stay grounded in the dataset.
         </div>
       ) : null}
 
-      {!hasReport && !isPending ? (
+      {!hasReport && !isGenerating ? (
         <section className="rounded-lg border border-dashed border-zinc-300 bg-white p-8">
           <h3 className="text-lg font-medium text-zinc-900">No trend report yet</h3>
           <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-            Click generate to send reviewer, rating, comment, flag, reason,
-            created, and service date to Gemini. The model writes explanations and
-            an action plan. Flag trends, sentiment, keywords, and tables are
-            calculated from the same rows.
+            Click generate to analyze reviewer, rating, comment, flag, reason,
+            created, and service date. Gemini writes explanations and an action
+            plan. Flag trends, sentiment, keywords, and tables are calculated
+            from the same rows on this server.
           </p>
         </section>
       ) : null}
@@ -150,10 +172,7 @@ export function TrendsWorkspace({
                 </p>
                 <BarChart
                   data={report.aggregates.topReasons.map((point) => ({
-                    label:
-                      point.reason.length > 16
-                        ? `${point.reason.slice(0, 16)}…`
-                        : point.reason,
+                    label: truncateLabel(point.reason),
                     value: point.count,
                   }))}
                   yLabel="Count"
@@ -198,8 +217,8 @@ export function TrendsWorkspace({
             <WordCloud keywords={report.aggregates.topKeywords} />
             {report.insights.keywordThemes.length > 0 ? (
               <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-zinc-600">
-                {report.insights.keywordThemes.map((theme) => (
-                  <li key={`${theme.term}-${theme.meaning}`}>
+                {report.insights.keywordThemes.map((theme, index) => (
+                  <li key={`${theme.term}-${index}`}>
                     <span className="font-medium text-zinc-800">{theme.term}</span>
                     {": "}
                     {theme.meaning}

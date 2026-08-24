@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assertGeminiKeyNotPublic,
   getGeminiApiKey,
+  isAuthGeminiError,
   isRetryableGeminiError,
   resolveGeminiModels,
 } from "@/lib/trends/env";
@@ -108,10 +109,13 @@ describe("gemini env", () => {
     ]);
   });
 
-  it("retries on 404, 429, and not-found errors", () => {
+  it("retries on 404, 429, and not-found errors but not auth failures", () => {
     expect(isRetryableGeminiError({ status: 404, message: "nope" })).toBe(true);
     expect(isRetryableGeminiError({ status: 429 })).toBe(true);
     expect(isRetryableGeminiError(new Error("NOT_FOUND"))).toBe(true);
     expect(isRetryableGeminiError(new Error("schema mismatch"))).toBe(false);
+    expect(isRetryableGeminiError({ status: 403 })).toBe(false);
+    expect(isAuthGeminiError({ status: 403 })).toBe(true);
+    expect(isRetryableGeminiError(new Error("PERMISSION_DENIED"))).toBe(false);
   });
 });

@@ -12,8 +12,8 @@ function BulletList({ items, empty }: { items: string[]; empty: string }) {
 
   return (
     <ul className="list-disc space-y-2 pl-5 text-sm text-zinc-700">
-      {items.map((item) => (
-        <li key={item}>{item}</li>
+      {items.map((item, index) => (
+        <li key={`${index}-${item}`}>{item}</li>
       ))}
     </ul>
   );

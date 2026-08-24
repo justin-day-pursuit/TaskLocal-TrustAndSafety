@@ -89,6 +89,8 @@ export interface GeminiInsights {
 export interface TrendWatermark {
   rowCount: number;
   newestCreated: string | null;
+  comparable: boolean;
+  fingerprints: string[];
 }
 
 export interface TrendReport {
@@ -108,4 +110,5 @@ export interface TrendReport {
 export interface GenerateTrendsResult {
   data: TrendReport | null;
   error: string | null;
+  persistWarning: string | null;
 }

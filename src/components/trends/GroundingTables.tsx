@@ -78,8 +78,9 @@ export function GroundingTables({
       <div>
         <h3 className="text-lg font-medium text-zinc-900">Grounding tables</h3>
         <p className="mt-1 text-sm text-zinc-500">
-          These counts are computed from the stripped review rows sent to Gemini,
-          so the charts above can be checked against the source data.
+          Monthly, reason, and keyword tables use the full local dataset. The
+          row table below is a recent sample of stripped columns, not every
+          review.
         </p>
       </div>
 
@@ -142,7 +143,7 @@ export function GroundingTables({
       </Table>
 
       <Table
-        caption={`Stripped review sample (${sample.length} row${sample.length === 1 ? "" : "s"})`}
+        caption={`Recent stripped sample (${sample.length} newest row${sample.length === 1 ? "" : "s"})`}
         headers={[
           "Reviewer",
           "Rating",

@@ -27,25 +27,27 @@ export function emptyInsights(message?: string): GeminiInsights {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export function isGeminiInsights(value: unknown): value is GeminiInsights {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return false;
   }
 
-  const insights = value as Partial<GeminiInsights>;
   return (
-    Array.isArray(insights.goingWell) &&
-    Array.isArray(insights.needsWork) &&
-    Array.isArray(insights.actionPlan) &&
-    typeof insights.flagTrendsExplanation === "string" &&
-    typeof insights.flagTrendsConclusions === "string" &&
-    typeof insights.sentimentExplanation === "string" &&
-    typeof insights.sentimentConclusions === "string" &&
-    typeof insights.sentimentOverallLabel === "string" &&
-    typeof insights.keywordsExplanation === "string" &&
-    Array.isArray(insights.keywordThemes) &&
-    typeof insights.changeSinceLast === "object" &&
-    insights.changeSinceLast !== null
+    Array.isArray(value.goingWell) &&
+    Array.isArray(value.needsWork) &&
+    Array.isArray(value.actionPlan) &&
+    typeof value.flagTrendsExplanation === "string" &&
+    typeof value.flagTrendsConclusions === "string" &&
+    typeof value.sentimentExplanation === "string" &&
+    typeof value.sentimentConclusions === "string" &&
+    typeof value.sentimentOverallLabel === "string" &&
+    typeof value.keywordsExplanation === "string" &&
+    Array.isArray(value.keywordThemes) &&
+    isRecord(value.changeSinceLast)
   );
 }
 
@@ -61,7 +63,7 @@ export function parseGeminiInsightsText(text: string): GeminiInsights {
     throw new Error("Gemini returned JSON that did not match the insights schema.");
   }
 
-  const change = parsed.changeSinceLast as GeminiInsights["changeSinceLast"];
+  const change = parsed.changeSinceLast;
 
   return {
     goingWell: parsed.goingWell.map(String),
@@ -73,10 +75,12 @@ export function parseGeminiInsightsText(text: string): GeminiInsights {
     sentimentConclusions: parsed.sentimentConclusions,
     sentimentOverallLabel: parsed.sentimentOverallLabel,
     keywordsExplanation: parsed.keywordsExplanation,
-    keywordThemes: parsed.keywordThemes.map((theme) => ({
-      term: String(theme.term ?? ""),
-      meaning: String(theme.meaning ?? ""),
-    })),
+    keywordThemes: parsed.keywordThemes
+      .filter((theme) => isRecord(theme))
+      .map((theme) => ({
+        term: String(theme.term ?? ""),
+        meaning: String(theme.meaning ?? ""),
+      })),
     changeSinceLast: {
       hasPrevious: Boolean(change.hasPrevious),
       newReviewCount: Number(change.newReviewCount) || 0,
@@ -86,6 +90,21 @@ export function parseGeminiInsightsText(text: string): GeminiInsights {
       emergingTrends: Array.isArray(change.emergingTrends)
         ? change.emergingTrends.map(String)
         : [],
+    },
+  };
+}
+
+export function groundChangeSinceLast(
+  insights: GeminiInsights,
+  hasPrevious: boolean,
+  newReviewCount: number
+): GeminiInsights {
+  return {
+    ...insights,
+    changeSinceLast: {
+      ...insights.changeSinceLast,
+      hasPrevious,
+      newReviewCount,
     },
   };
 }

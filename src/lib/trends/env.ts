@@ -48,18 +48,45 @@ export function resolveGeminiModels(override: string | null): string[] {
   return [...GEMINI_MODEL_CHAIN];
 }
 
-export function isRetryableGeminiError(error: unknown): boolean {
+export function isAuthGeminiError(error: unknown): boolean {
   const status =
     typeof error === "object" && error !== null && "status" in error
       ? Number((error as { status?: number }).status)
       : NaN;
 
-  if (status === 403 || status === 404 || status === 429) {
+  if (status === 401 || status === 403) {
     return true;
   }
 
   const message = error instanceof Error ? error.message : String(error);
-  return /404|403|429|NOT_FOUND|RESOURCE_EXHAUSTED|PERMISSION_DENIED|not found|not available|quota/i.test(
+  return /401|403|PERMISSION_DENIED|API_KEY_INVALID|invalid api key|unauthoriz/i.test(
     message
   );
+}
+
+export function isRetryableGeminiError(error: unknown): boolean {
+  if (isAuthGeminiError(error)) {
+    return false;
+  }
+
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: number }).status)
+      : NaN;
+
+  if (status === 404 || status === 429) {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /404|429|NOT_FOUND|RESOURCE_EXHAUSTED|not found|not available|quota/i.test(
+    message
+  );
+}
+
+export function publicGeminiError(error: unknown): string {
+  if (isAuthGeminiError(error)) {
+    return "Gemini rejected the API key. Check GEMINI_API_KEY in .env.local (or Vercel env) and try again.";
+  }
+  return "Gemini analysis failed. Try again in a minute. If it keeps failing, check the server logs.";
 }

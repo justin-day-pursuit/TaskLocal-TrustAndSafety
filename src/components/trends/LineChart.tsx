@@ -87,8 +87,8 @@ export function LineChart({
         strokeWidth="2"
         points={polyline}
       />
-      {points.map((point) => (
-        <g key={point.label}>
+      {points.map((point, index) => (
+        <g key={`${point.label}-${index}`}>
           <circle cx={point.x} cy={point.y} r="3.5" fill="#18181b">
             <title>{`${point.label}: ${valueFormat(point.value)}`}</title>
           </circle>

@@ -7,6 +7,7 @@ import type { StrippedReview } from "@/lib/trends/types";
 const BOOKING_IN_CHUNK = 100;
 
 interface ReviewRow {
+  id: string;
   bookingId: string;
   reviewerRole: Review["reviewerRole"];
   rating: number;
@@ -37,9 +38,10 @@ async function fetchAllReviews(): Promise<{
       const { data, error } = await supabase
         .from("Review")
         .select(
-          "bookingId, reviewerRole, rating, comment, flag, reason, createdAt"
+          "id, bookingId, reviewerRole, rating, comment, flag, reason, createdAt"
         )
         .order("createdAt", { ascending: true })
+        .order("id", { ascending: true })
         .range(offset, offset + POSTGREST_MAX_ROWS - 1);
 
       if (error) {

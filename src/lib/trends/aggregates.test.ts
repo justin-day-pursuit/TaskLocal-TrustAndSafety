@@ -55,6 +55,29 @@ describe("trend aggregates and keywords", () => {
     expect(aggregates.ratingDistribution.find((item) => item.rating === 5)?.count).toBe(1);
   });
 
+  it("fills missing months in the flag series", () => {
+    const aggregates = computeTrendAggregates([
+      row({ created: "2026-01-02T00:00:00.000Z" }),
+      row({ created: "2026-03-05T00:00:00.000Z" }),
+    ]);
+
+    expect(aggregates.monthlyFlags.map((point) => point.month)).toEqual([
+      "2026-01",
+      "2026-02",
+      "2026-03",
+    ]);
+    expect(aggregates.monthlyFlags[1]).toEqual({
+      month: "2026-02",
+      total: 0,
+      flagged: 0,
+      flagRate: 0,
+    });
+    expect(aggregates.monthlySentiment.map((point) => point.month)).toEqual([
+      "2026-01",
+      "2026-03",
+    ]);
+  });
+
   it("counts repeated comment keywords and drops stopwords", () => {
     const keywords = countCommentKeywords(
       [
@@ -77,14 +100,28 @@ describe("new vs prior split", () => {
     expect(splitNewVsPrior(rows, null)).toEqual({
       newRows: [],
       priorCount: 0,
+      hasPrevious: false,
     });
-    expect(buildWatermark(rows)).toEqual({
-      rowCount: 2,
-      newestCreated: "2026-02-01T00:00:00.000Z",
+    const watermark = buildWatermark(rows);
+    expect(watermark.rowCount).toBe(2);
+    expect(watermark.newestCreated).toBe("2026-02-01T00:00:00.000Z");
+    expect(watermark.comparable).toBe(true);
+    expect(watermark.fingerprints).toHaveLength(2);
+  });
+
+  it("does not treat an empty prior report as a comparable watermark", () => {
+    const rows = [row({ created: "2026-03-01T00:00:00.000Z" })];
+    const emptyPrior = buildWatermark([]);
+
+    expect(emptyPrior.comparable).toBe(false);
+    expect(splitNewVsPrior(rows, emptyPrior)).toEqual({
+      newRows: [],
+      priorCount: 0,
+      hasPrevious: false,
     });
   });
 
-  it("returns only rows newer than the watermark", () => {
+  it("returns only rows newer than the watermark when fingerprints are missing", () => {
     const rows = [
       row({ created: "2026-01-01T00:00:00.000Z" }),
       row({ created: "2026-02-01T00:00:00.000Z" }),
@@ -94,11 +131,30 @@ describe("new vs prior split", () => {
     const split = splitNewVsPrior(rows, {
       rowCount: 2,
       newestCreated: "2026-02-01T00:00:00.000Z",
+      comparable: true,
+      fingerprints: [],
     });
 
+    expect(split.hasPrevious).toBe(true);
     expect(split.priorCount).toBe(2);
     expect(split.newRows).toHaveLength(1);
     expect(split.newRows[0]?.comment).toBe("new damage report");
+  });
+
+  it("detects backfilled rows via fingerprints even when created is older", () => {
+    const prior = [
+      row({ created: "2026-02-01T00:00:00.000Z", comment: "existing" }),
+    ];
+    const current = [
+      row({ created: "2026-01-01T00:00:00.000Z", comment: "backfill" }),
+      ...prior,
+    ];
+
+    const split = splitNewVsPrior(current, buildWatermark(prior));
+
+    expect(split.hasPrevious).toBe(true);
+    expect(split.newRows).toHaveLength(1);
+    expect(split.newRows[0]?.comment).toBe("backfill");
   });
 });
 
@@ -128,5 +184,32 @@ describe("parseGeminiInsightsText", () => {
     expect(insights.actionPlan[0]).toMatch(/Follow up/);
     expect(insights.changeSinceLast.newReviewCount).toBe(1);
     expect(insights.keywordThemes[0]?.term).toBe("professional");
+  });
+
+  it("skips null keyword themes instead of throwing", () => {
+    const insights = parseGeminiInsightsText(
+      JSON.stringify({
+        goingWell: [],
+        needsWork: [],
+        actionPlan: [],
+        flagTrendsExplanation: "x",
+        flagTrendsConclusions: "x",
+        sentimentExplanation: "x",
+        sentimentConclusions: "x",
+        sentimentOverallLabel: "mixed",
+        keywordsExplanation: "x",
+        keywordThemes: [null, { term: "late", meaning: "punctuality" }],
+        changeSinceLast: {
+          hasPrevious: false,
+          newReviewCount: 9,
+          whatChanged: [],
+          emergingTrends: [],
+        },
+      })
+    );
+
+    expect(insights.keywordThemes).toEqual([
+      { term: "late", meaning: "punctuality" },
+    ]);
   });
 });
