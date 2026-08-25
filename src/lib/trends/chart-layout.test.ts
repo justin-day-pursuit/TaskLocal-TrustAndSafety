@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   CHART_LAYOUT,
+  formatChartCount,
+  formatChartCountExact,
   getPlotRect,
   layoutBars,
   layoutLineXs,
+  niceCountMax,
   scaleMaxWithHeadroom,
   valueToY,
 } from "@/lib/trends/chart-layout";
@@ -33,12 +36,41 @@ describe("chart layout", () => {
   it("adds y-axis headroom so the tallest bar does not touch the top of the plot", () => {
     const { bars, yMax, plot } = layoutBars([3, 1]);
 
-    expect(yMax).toBeCloseTo(3 * (1 + CHART_LAYOUT.yHeadroom));
     expect(yMax).toBeGreaterThan(3);
     expect(bars[0]!.y).toBeGreaterThan(plot.plotTop);
     expect(bars[0]!.y + bars[0]!.height).toBeCloseTo(
       plot.plotTop + plot.innerHeight
     );
+  });
+
+  it("snaps the count axis to a nice max that still covers the data", () => {
+    expect(niceCountMax(3)).toBe(4);
+    expect(niceCountMax(10)).toBe(12);
+    expect(niceCountMax(8_474_576)).toBe(10_000_000);
+    expect(niceCountMax(0)).toBe(1);
+
+    const { yMax, ticks } = layoutBars([8_474_576, 1_200, 400]);
+    expect(yMax).toBe(10_000_000);
+    expect(ticks).toEqual([0, 5_000_000, 10_000_000]);
+    expect(yMax).toBeGreaterThanOrEqual(8_474_576);
+  });
+
+  it("uses integer count ticks instead of fractional review counts", () => {
+    const { yMax, ticks } = layoutBars([12, 9, 8, 2, 11]);
+    expect(yMax).toBeGreaterThanOrEqual(12);
+    expect(ticks[0]).toBe(0);
+    expect(ticks.at(-1)).toBe(yMax);
+    expect(ticks.every((tick) => Number.isInteger(tick))).toBe(true);
+  });
+
+  it("formats count ticks compactly and tooltips exactly", () => {
+    expect(formatChartCount(0)).toBe("0");
+    expect(formatChartCount(4)).toBe("4");
+    expect(formatChartCount(2.5)).toBe("2.5");
+    expect(formatChartCount(5_000_000)).toBe("5M");
+    expect(formatChartCount(10_000_000)).toBe("10M");
+    expect(formatChartCount(1_500)).toBe("1.5K");
+    expect(formatChartCountExact(8_474_576)).toBe("8,474,576");
   });
 
   it("centers each bar in its band", () => {

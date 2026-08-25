@@ -3,6 +3,7 @@ import { useId } from "react";
 import { ChartCaption } from "@/components/trends/ChartCaption";
 import {
   CHART_COLORS,
+  CHART_LAYOUT,
   getPlotRect,
   layoutLineXs,
   scaleMaxWithHeadroom,
@@ -60,12 +61,12 @@ export function LineChart({
         className="h-auto w-full"
       >
         <text
-          x={12}
+          x={CHART_LAYOUT.yAxisTitleX}
           y={padding.top + innerHeight / 2}
           fill={CHART_COLORS.muted}
           fontSize="11"
           textAnchor="middle"
-          transform={`rotate(-90 12 ${padding.top + innerHeight / 2})`}
+          transform={`rotate(-90 ${CHART_LAYOUT.yAxisTitleX} ${padding.top + innerHeight / 2})`}
         >
           {yLabel}
         </text>

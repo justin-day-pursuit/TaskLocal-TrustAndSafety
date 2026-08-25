@@ -1,7 +1,8 @@
 export const CHART_LAYOUT = {
   width: 640,
   height: 240,
-  padding: { top: 20, right: 16, bottom: 48, left: 48 },
+  padding: { top: 20, right: 16, bottom: 48, left: 64 },
+  yAxisTitleX: 12,
   plotInsetX: 24,
   maxBarWidth: 44,
   minGap: 16,
@@ -78,6 +79,88 @@ export function scaleMaxWithHeadroom(
   return baseline * (1 + headroom);
 }
 
+const COUNT_STEP_CANDIDATES = [1, 2, 2.5, 5, 10] as const;
+const INTEGER_COUNT_STEP_CANDIDATES = [1, 2, 4, 5, 6, 8, 10] as const;
+
+function niceCountStep(roughStep: number, integerTicks: boolean): number {
+  if (roughStep <= 0) {
+    return 1;
+  }
+  const exp = Math.floor(Math.log10(roughStep));
+  const magnitude = 10 ** exp;
+  const normalized = roughStep / magnitude;
+  const candidates = integerTicks ? INTEGER_COUNT_STEP_CANDIDATES : COUNT_STEP_CANDIDATES;
+  const nice = candidates.find((value) => normalized <= value) ?? 10;
+  const step = nice * magnitude;
+  return integerTicks ? Math.max(step, 1) : step;
+}
+
+export function niceCountScale(
+  dataMax: number,
+  headroom: number = CHART_LAYOUT.yHeadroom
+): { yMax: number; ticks: number[] } {
+  const baseline = Math.max(dataMax, 0);
+  if (baseline === 0) {
+    return { yMax: 1, ticks: [0, 1] };
+  }
+
+  const target = baseline * (1 + headroom);
+  const integerTicks = baseline >= 2;
+  const step = niceCountStep(target / 2, integerTicks);
+  const intervals = Math.max(1, Math.ceil(target / step - 1e-9));
+  const yMax = intervals * step;
+  const ticks = Array.from({ length: intervals + 1 }, (_, index) =>
+    Number((index * step).toPrecision(12))
+  );
+  return { yMax, ticks };
+}
+
+export function niceCountMax(
+  dataMax: number,
+  headroom: number = CHART_LAYOUT.yHeadroom
+): number {
+  return niceCountScale(dataMax, headroom).yMax;
+}
+
+export function formatChartCount(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+
+  const compact = (n: number, suffix: string) => {
+    const rounded = Math.round(n * 10) / 10;
+    const body = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    return `${sign}${body}${suffix}`;
+  };
+
+  if (abs >= 1_000_000_000) {
+    return compact(abs / 1_000_000_000, "B");
+  }
+  if (abs >= 1_000_000) {
+    return compact(abs / 1_000_000, "M");
+  }
+  if (abs >= 1_000) {
+    return compact(abs / 1_000, "K");
+  }
+
+  const nearestInt = Math.round(abs);
+  if (Math.abs(abs - nearestInt) < 1e-6) {
+    return `${sign}${nearestInt}`;
+  }
+
+  return `${sign}${(Math.round(abs * 10) / 10).toFixed(1)}`;
+}
+
+export function formatChartCountExact(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+  return Math.round(value).toLocaleString("en-US");
+}
+
 export function layoutBars(
   values: number[],
   options: Partial<{
@@ -90,6 +173,7 @@ export function layoutBars(
   }> = {}
 ): {
   yMax: number;
+  ticks: number[];
   barWidth: number;
   bandWidth: number;
   plot: PlotRect;
@@ -99,11 +183,11 @@ export function layoutBars(
   const maxBarWidth = options.maxBarWidth ?? CHART_LAYOUT.maxBarWidth;
   const minGap = options.minGap ?? CHART_LAYOUT.minGap;
   const dataMax = values.length === 0 ? 0 : Math.max(...values, 0);
-  const yMax = scaleMaxWithHeadroom(dataMax, options.yHeadroom);
+  const { yMax, ticks } = niceCountScale(dataMax, options.yHeadroom);
   const count = values.length;
 
   if (count === 0 || plot.plotWidth <= 0) {
-    return { yMax, barWidth: 0, bandWidth: 0, plot, bars: [] };
+    return { yMax, ticks, barWidth: 0, bandWidth: 0, plot, bars: [] };
   }
 
   const bandWidth = plot.plotWidth / count;
@@ -120,7 +204,7 @@ export function layoutBars(
     bars[index]!.x = bandStart + (bandWidth - barWidth) / 2;
   }
 
-  return { yMax, barWidth, bandWidth, plot, bars };
+  return { yMax, ticks, barWidth, bandWidth, plot, bars };
 }
 
 export function layoutLineXs(count: number, plot: PlotRect = getPlotRect()): number[] {
