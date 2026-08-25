@@ -3,6 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --tl-primary: #6d28d9;
+  --tl-accent: #aa3bff;
+  --tl-text: #1a1825;
+  --tl-muted: #6b6375;
+  --tl-border: #e5e4e7;
+  --tl-surface: #f6f5f8;
+  --tl-danger: #b42318;
 }
 
 @theme inline {
@@ -10,6 +17,13 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-tl-primary: var(--tl-primary);
+  --color-tl-accent: var(--tl-accent);
+  --color-tl-text: var(--tl-text);
+  --color-tl-muted: var(--tl-muted);
+  --color-tl-border: var(--tl-border);
+  --color-tl-surface: var(--tl-surface);
+  --color-tl-danger: var(--tl-danger);
 }
 
 @media (prefers-color-scheme: dark) {

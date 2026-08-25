@@ -45,6 +45,19 @@ function truncateLabel(label: string, max = 16): string {
   return `${label.slice(0, max)}…`;
 }
 
+const CHART_CAPTIONS = {
+  flaggedReviews:
+    "Count of flagged reviews per month. Taller bars mean more issues reached moderation that month.",
+  flagsByReason:
+    "How often each flag reason appears. The tallest bars are the dominant complaint types.",
+  averageRating:
+    "Mean star rating by month (1–5). The slope shows whether overall sentiment is improving or worsening.",
+  ratingDistribution:
+    "How many reviews landed on each star. A pile-up at 1★ is a safety/quality signal even when the monthly average looks fine.",
+  keywordCloud:
+    "Words that repeat most in review comments. Larger terms are the more common themes in the text.",
+} as const;
+
 export function TrendsWorkspace({
   initialReport,
   autoGenerate,
@@ -114,14 +127,14 @@ export function TrendsWorkspace({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-zinc-900">Trends</h2>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h2 className="text-2xl font-semibold text-tl-text">Trends</h2>
+          <p className="mt-1 text-sm text-tl-muted">
             On-demand Gemini analysis. Review IDs and booking keys are removed
             first. Comments and flag reasons are sent to Google and may contain
             personal details.
           </p>
           {report ? (
-            <p className="mt-2 text-xs text-zinc-500">
+            <p className="mt-2 text-xs text-tl-muted">
               Analyzed with {report.modelUsed} · {formatGeneratedAt(report.generatedAt)} ·{" "}
               {report.aggregates.totalReviews} reviews ·{" "}
               {formatPercent(report.aggregates.flagRate)} flagged · avg rating{" "}
@@ -135,7 +148,7 @@ export function TrendsWorkspace({
             void runGenerate();
           }}
           disabled={isGenerating}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[10px] bg-tl-primary px-4 py-2 text-sm font-medium text-white transition hover:brightness-90 disabled:cursor-not-allowed disabled:bg-tl-muted disabled:hover:brightness-100"
         >
           {isGenerating ? (
             <>
@@ -171,9 +184,9 @@ export function TrendsWorkspace({
       ) : null}
 
       {!hasReport && !isGenerating && !error ? (
-        <section className="rounded-lg border border-dashed border-zinc-300 bg-white p-8">
-          <h3 className="text-lg font-medium text-zinc-900">No trend report yet</h3>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+        <section className="rounded-[10px] border border-dashed border-tl-border bg-white p-8">
+          <h3 className="text-lg font-medium text-tl-text">No trend report yet</h3>
+          <p className="mt-2 max-w-2xl text-sm text-tl-muted">
             Click generate to analyze reviewer, rating, comment, flag, reason,
             created, and service date. Gemini writes explanations and an action
             plan. Flag trends, sentiment, keywords, and tables are calculated
@@ -197,10 +210,11 @@ export function TrendsWorkspace({
                 value: point.flagged,
               }))}
               yLabel="Flagged reviews"
+              caption={CHART_CAPTIONS.flaggedReviews}
             />
             {report.aggregates.topReasons.length > 0 ? (
               <div className="mt-6">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tl-muted">
                   Flags by reason
                 </p>
                 <BarChart
@@ -209,6 +223,7 @@ export function TrendsWorkspace({
                     value: point.count,
                   }))}
                   yLabel="Count"
+                  caption={CHART_CAPTIONS.flagsByReason}
                 />
               </div>
             ) : null}
@@ -228,9 +243,10 @@ export function TrendsWorkspace({
               yMin={1}
               yMax={5}
               valueFormat={(value) => value.toFixed(1)}
+              caption={CHART_CAPTIONS.averageRating}
             />
             <div className="mt-6">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tl-muted">
                 Rating distribution
               </p>
               <BarChart
@@ -239,6 +255,7 @@ export function TrendsWorkspace({
                   value: point.count,
                 }))}
                 yLabel="Reviews"
+                caption={CHART_CAPTIONS.ratingDistribution}
               />
             </div>
           </ChartCard>
@@ -247,12 +264,15 @@ export function TrendsWorkspace({
             title="Repeated keywords in comments"
             explanation={report.insights.keywordsExplanation}
           >
-            <WordCloud keywords={report.aggregates.topKeywords} />
+            <WordCloud
+              keywords={report.aggregates.topKeywords}
+              caption={CHART_CAPTIONS.keywordCloud}
+            />
             {report.insights.keywordThemes.length > 0 ? (
-              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-zinc-600">
+              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-tl-muted">
                 {report.insights.keywordThemes.map((theme, index) => (
                   <li key={`${theme.term}-${index}`}>
-                    <span className="font-medium text-zinc-800">{theme.term}</span>
+                    <span className="font-medium text-tl-text">{theme.term}</span>
                     {": "}
                     {theme.meaning}
                   </li>

@@ -37,9 +37,9 @@ function Table({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200">
-      <table className="min-w-full divide-y divide-zinc-200 text-left text-sm">
-        <caption className="bg-zinc-50 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
+    <div className="overflow-x-auto rounded-[10px] border border-tl-border">
+      <table className="min-w-full divide-y divide-tl-border text-left text-sm">
+        <caption className="bg-tl-surface px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-tl-muted">
           {caption}
         </caption>
         <thead className="bg-white">
@@ -47,14 +47,14 @@ function Table({
             {headers.map((header) => (
               <th
                 key={header}
-                className="px-4 py-2 font-medium text-zinc-600"
+                className="px-4 py-2 font-medium text-tl-muted"
               >
                 {header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100 bg-white">{children}</tbody>
+        <tbody className="divide-y divide-tl-border bg-white">{children}</tbody>
       </table>
     </div>
   );
@@ -76,8 +76,8 @@ export function GroundingTables({
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="text-lg font-medium text-zinc-900">Grounding tables</h3>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h3 className="text-lg font-medium text-tl-text">Grounding tables</h3>
+        <p className="mt-1 text-sm text-tl-muted">
           Monthly, reason, and keyword tables use the full local dataset. The
           row table below is a recent sample of stripped columns, not every
           review.
@@ -90,17 +90,17 @@ export function GroundingTables({
       >
         {monthlyFlags.length === 0 ? (
           <tr>
-            <td className="px-4 py-3 text-zinc-500" colSpan={4}>
+            <td className="px-4 py-3 text-tl-muted" colSpan={4}>
               No monthly rows.
             </td>
           </tr>
         ) : (
           monthlyFlags.map((row) => (
             <tr key={row.month}>
-              <td className="px-4 py-2 text-zinc-800">{row.month}</td>
-              <td className="px-4 py-2 text-zinc-800">{row.total}</td>
-              <td className="px-4 py-2 text-zinc-800">{row.flagged}</td>
-              <td className="px-4 py-2 text-zinc-800">
+              <td className="px-4 py-2 text-tl-text">{row.month}</td>
+              <td className="px-4 py-2 text-tl-text">{row.total}</td>
+              <td className="px-4 py-2 text-tl-text">{row.flagged}</td>
+              <td className="px-4 py-2 text-tl-text">
                 {formatPercent(row.flagRate)}
               </td>
             </tr>
@@ -111,15 +111,15 @@ export function GroundingTables({
       <Table caption="Top flag reasons" headers={["Reason", "Count"]}>
         {topReasons.length === 0 ? (
           <tr>
-            <td className="px-4 py-3 text-zinc-500" colSpan={2}>
+            <td className="px-4 py-3 text-tl-muted" colSpan={2}>
               No flagged reasons.
             </td>
           </tr>
         ) : (
           topReasons.map((row) => (
             <tr key={row.reason}>
-              <td className="px-4 py-2 text-zinc-800">{row.reason}</td>
-              <td className="px-4 py-2 text-zinc-800">{row.count}</td>
+              <td className="px-4 py-2 text-tl-text">{row.reason}</td>
+              <td className="px-4 py-2 text-tl-text">{row.count}</td>
             </tr>
           ))
         )}
@@ -128,15 +128,15 @@ export function GroundingTables({
       <Table caption="Top comment keywords" headers={["Keyword", "Count"]}>
         {topKeywords.length === 0 ? (
           <tr>
-            <td className="px-4 py-3 text-zinc-500" colSpan={2}>
+            <td className="px-4 py-3 text-tl-muted" colSpan={2}>
               No keywords extracted.
             </td>
           </tr>
         ) : (
           topKeywords.map((row) => (
             <tr key={row.term}>
-              <td className="px-4 py-2 text-zinc-800">{row.term}</td>
-              <td className="px-4 py-2 text-zinc-800">{row.count}</td>
+              <td className="px-4 py-2 text-tl-text">{row.term}</td>
+              <td className="px-4 py-2 text-tl-text">{row.count}</td>
             </tr>
           ))
         )}
@@ -156,28 +156,28 @@ export function GroundingTables({
       >
         {sample.length === 0 ? (
           <tr>
-            <td className="px-4 py-3 text-zinc-500" colSpan={7}>
+            <td className="px-4 py-3 text-tl-muted" colSpan={7}>
               No stripped rows.
             </td>
           </tr>
         ) : (
           sample.map((row, index) => (
             <tr key={`${row.created}-${index}`}>
-              <td className="px-4 py-2 capitalize text-zinc-800">
+              <td className="px-4 py-2 capitalize text-tl-text">
                 {row.reviewer}
               </td>
-              <td className="px-4 py-2 text-zinc-800">{row.rating}</td>
-              <td className="max-w-xs truncate px-4 py-2 text-zinc-800" title={row.comment}>
+              <td className="px-4 py-2 text-tl-text">{row.rating}</td>
+              <td className="max-w-xs truncate px-4 py-2 text-tl-text" title={row.comment}>
                 {row.comment || "—"}
               </td>
-              <td className="px-4 py-2 text-zinc-800">
+              <td className="px-4 py-2 text-tl-text">
                 {row.flag ? "Yes" : "No"}
               </td>
-              <td className="px-4 py-2 text-zinc-800">{row.reason || "—"}</td>
-              <td className="px-4 py-2 text-zinc-800">
+              <td className="px-4 py-2 text-tl-text">{row.reason || "—"}</td>
+              <td className="px-4 py-2 text-tl-text">
                 {formatDate(row.created)}
               </td>
-              <td className="px-4 py-2 text-zinc-800">
+              <td className="px-4 py-2 text-tl-text">
                 {formatDate(row.serviceDate)}
               </td>
             </tr>
