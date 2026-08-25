@@ -41,4 +41,23 @@ describe("stripReviewForAnalysis", () => {
     expect(JSON.stringify(stripped)).not.toContain("bkg_secret");
     expect(JSON.stringify(stripped)).not.toContain("handled");
   });
+
+  it("redacts emails and phones from comment and reason", () => {
+    const stripped = stripReviewForAnalysis(
+      {
+        ...review,
+        comment: "Call me at 415-555-0199 or jane@example.com — late",
+        reason: "Threats; contact @bad_actor or https://evil.example/x",
+      },
+      null
+    );
+
+    expect(stripped.comment).toBe("Call me at [redacted] or [redacted] — late");
+    expect(stripped.comment).not.toContain("415-555-0199");
+    expect(stripped.comment).not.toContain("jane@example.com");
+    expect(stripped.reason).toContain("[redacted]");
+    expect(stripped.reason).not.toContain("@bad_actor");
+    expect(stripped.reason).not.toContain("https://evil.example/x");
+    expect(stripped.reason).toContain("Threats");
+  });
 });

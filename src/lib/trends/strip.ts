@@ -1,4 +1,5 @@
 import type { Review } from "@/lib/types/database";
+import { redactFreeText } from "@/lib/trends/redact";
 import {
   STRIPPED_REVIEW_KEYS,
   type StrippedReview,
@@ -16,9 +17,9 @@ export function stripReviewForAnalysis(
   return {
     reviewer: review.reviewerRole,
     rating: review.rating,
-    comment: review.comment,
+    comment: redactFreeText(review.comment),
     flag: review.flag,
-    reason: review.reason,
+    reason: redactFreeText(review.reason),
     created: review.createdAt,
     serviceDate,
   };
