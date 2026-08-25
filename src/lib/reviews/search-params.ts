@@ -1,5 +1,5 @@
-import { BOOKING_STATUSES, REVIEWER_ROLES } from "@/lib/constants/enums";
-import type { BookingStatus, ReviewerRole } from "@/lib/types/database";
+import { REVIEWER_ROLES } from "@/lib/constants/enums";
+import type { ReviewerRole } from "@/lib/types/database";
 
 /** PRD §7 `/reviews` URL contract — typed state with documented defaults. */
 
@@ -36,12 +36,12 @@ export type CreatedWithin = (typeof CREATED_WITHIN_OPTIONS)[number];
 export type TriStateBoolean = "all" | "true" | "false";
 
 export interface ReviewsCatalogParams {
+  qText?: string;
   qReview?: string;
   qBooking?: string;
   reviewerRole: ReviewerRole | "all";
-  flag: TriStateBoolean;
+  report: TriStateBoolean;
   handled: TriStateBoolean;
-  bookingStatus: BookingStatus | "all";
   sort: ReviewSortField;
   dir: SortDirection;
   createdWithin: CreatedWithin;
@@ -65,12 +65,12 @@ const BOOKING_SORT_FIELDS: ReadonlySet<ReviewSortField> = new Set([
 ]);
 
 const FILTER_KEYS: (keyof ReviewsCatalogParams)[] = [
+  "qText",
   "qReview",
   "qBooking",
   "reviewerRole",
-  "flag",
+  "report",
   "handled",
-  "bookingStatus",
   "sort",
   "dir",
   "createdWithin",
@@ -94,13 +94,6 @@ function parseTriStateBoolean(raw: string | undefined): TriStateBoolean {
 function parseReviewerRole(raw: string | undefined): ReviewerRole | "all" {
   if (raw && (REVIEWER_ROLES as readonly string[]).includes(raw)) {
     return raw as ReviewerRole;
-  }
-  return "all";
-}
-
-function parseBookingStatus(raw: string | undefined): BookingStatus | "all" {
-  if (raw && (BOOKING_STATUSES as readonly string[]).includes(raw)) {
-    return raw as BookingStatus;
   }
   return "all";
 }
@@ -167,20 +160,22 @@ function parseOptionalSearch(raw: string | undefined): string | undefined {
 export function parseReviewsCatalogParams(
   input: Record<string, string | string[] | undefined>
 ): ReviewsCatalogParams {
-  const flag = parseTriStateBoolean(firstString(input.flag));
+  const report = parseTriStateBoolean(
+    firstString(input.report) ?? firstString(input.flag)
+  );
   let handled = parseTriStateBoolean(firstString(input.handled));
 
-  if (flag === "false") {
+  if (report === "false") {
     handled = "all";
   }
 
   return {
+    qText: parseOptionalSearch(firstString(input.qText)),
     qReview: parseOptionalSearch(firstString(input.qReview)),
     qBooking: parseOptionalSearch(firstString(input.qBooking)),
     reviewerRole: parseReviewerRole(firstString(input.reviewerRole)),
-    flag,
+    report,
     handled,
-    bookingStatus: parseBookingStatus(firstString(input.bookingStatus)),
     sort: parseSortField(firstString(input.sort)),
     dir: parseSortDirection(firstString(input.dir)),
     createdWithin: parseCreatedWithin(firstString(input.createdWithin)),
@@ -207,20 +202,18 @@ export function serializeReviewsCatalogParams(
 ): string {
   const parts: string[] = [];
 
+  appendParam(parts, "qText", params.qText);
   appendParam(parts, "qReview", params.qReview);
   appendParam(parts, "qBooking", params.qBooking);
 
   if (params.reviewerRole !== "all") {
     appendParam(parts, "reviewerRole", params.reviewerRole);
   }
-  if (params.flag !== "all") {
-    appendParam(parts, "flag", params.flag);
+  if (params.report !== "all") {
+    appendParam(parts, "report", params.report);
   }
-  if (params.handled !== "all" && params.flag !== "false") {
+  if (params.handled !== "all" && params.report !== "false") {
     appendParam(parts, "handled", params.handled);
-  }
-  if (params.bookingStatus !== "all") {
-    appendParam(parts, "bookingStatus", params.bookingStatus);
   }
   if (params.sort !== DEFAULT_SORT) {
     appendParam(parts, "sort", params.sort);
@@ -254,7 +247,7 @@ export function mergeReviewsCatalogParams(
 ): ReviewsCatalogParams {
   const next: ReviewsCatalogParams = { ...current, ...updates };
 
-  if (next.flag === "false") {
+  if (next.report === "false") {
     next.handled = "all";
   }
 
@@ -277,11 +270,7 @@ export function isBookingSortField(sort: ReviewSortField): boolean {
 }
 
 export function requiresBookingFirstQuery(params: ReviewsCatalogParams): boolean {
-  return (
-    Boolean(params.qBooking) ||
-    params.bookingStatus !== "all" ||
-    isBookingSortField(params.sort)
-  );
+  return Boolean(params.qBooking) || isBookingSortField(params.sort);
 }
 
 export function parseActionNeededListParams(
