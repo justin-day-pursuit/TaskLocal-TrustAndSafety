@@ -19,7 +19,7 @@ export default async function TrendsPage({ searchParams }: TrendsPageProps) {
     generateParam === "1" || generateParam === "true";
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-tl-surface">
       <Suspense fallback={<QueryLoadingStatus copyKey="trendReport" />}>
         <TrendsPageData autoGenerate={autoGenerate} />
       </Suspense>

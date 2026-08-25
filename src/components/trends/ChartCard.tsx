@@ -14,14 +14,14 @@ export function ChartCard({
   children,
 }: ChartCardProps) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-medium text-zinc-900">{title}</h3>
+    <section className="rounded-[10px] border border-tl-border bg-white p-6 shadow-sm">
+      <h3 className="text-lg font-medium text-tl-text">{title}</h3>
       <div className="mt-4">{children}</div>
       {explanation ? (
-        <p className="mt-4 text-sm text-zinc-600">{explanation}</p>
+        <p className="mt-4 text-sm text-tl-muted">{explanation}</p>
       ) : null}
       {conclusions ? (
-        <p className="mt-2 text-sm font-medium text-zinc-800">{conclusions}</p>
+        <p className="mt-2 text-sm font-medium text-tl-text">{conclusions}</p>
       ) : null}
     </section>
   );
