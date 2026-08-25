@@ -187,11 +187,13 @@ ${JSON.stringify(baseInsights)}
     expect(insights.changeSinceLast.newReviewCount).toBe(1);
     expect(insights.keywordThemes[0]?.term).toBe("professional");
     expect(insights.flagReasonThemes).toEqual([]);
+    expect(insights.highRiskItems).toEqual([]);
   });
 
   it("treats a missing flagReasonThemes field as an empty list", () => {
     const insights = parseGeminiInsightsText(JSON.stringify(baseInsights));
     expect(insights.flagReasonThemes).toEqual([]);
+    expect(insights.highRiskItems).toEqual([]);
   });
 
   it("parses flagReasonThemes without inventing counts", () => {
@@ -265,5 +267,6 @@ ${JSON.stringify(baseInsights)}
       { term: "late", meaning: "punctuality" },
     ]);
     expect(insights.flagReasonThemes).toEqual([]);
+    expect(insights.highRiskItems).toEqual([]);
   });
 });

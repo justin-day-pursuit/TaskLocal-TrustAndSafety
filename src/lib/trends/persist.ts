@@ -53,7 +53,8 @@ export function isTrendReport(value: unknown): value is TrendReport {
     isAggregates(value.aggregates) &&
     isGeminiInsights(value.insights) &&
     isWatermark(value.watermark) &&
-    Array.isArray(value.groundingSample)
+    Array.isArray(value.groundingSample) &&
+    (value.highRiskCases === undefined || Array.isArray(value.highRiskCases))
   );
 }
 
@@ -61,6 +62,9 @@ function normalizeTrendReport(report: TrendReport): TrendReport {
   return {
     ...report,
     insights: normalizeGeminiInsights(report.insights),
+    highRiskCases: Array.isArray(report.highRiskCases)
+      ? report.highRiskCases
+      : [],
   };
 }
 

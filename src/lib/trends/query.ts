@@ -3,7 +3,7 @@ import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-s
 import { createServerClient } from "@/lib/supabase/server";
 import type { Review } from "@/lib/types/database";
 import { stripReviewForAnalysis } from "@/lib/trends/strip";
-import type { StrippedReview } from "@/lib/trends/types";
+import type { StrippedReview, TrendReviewRow } from "@/lib/trends/types";
 
 const BOOKING_IN_CHUNK = 100;
 
@@ -15,6 +15,7 @@ interface ReviewRow {
   comment: string;
   flag: boolean;
   reason: string;
+  handled: boolean;
   createdAt: string;
 }
 
@@ -40,7 +41,7 @@ async function fetchAllReviews(): Promise<{
       const { data, error } = await supabase
         .from("Review")
         .select(
-          "id, bookingId, reviewerRole, rating, comment, flag, reason, createdAt"
+          "id, bookingId, reviewerRole, rating, comment, flag, reason, handled, createdAt"
         )
         .order("createdAt", { ascending: true })
         .order("id", { ascending: true })
@@ -102,8 +103,8 @@ async function fetchServiceDatesByBookingId(
   }
 }
 
-export async function fetchStrippedReviews(): Promise<{
-  data: StrippedReview[] | null;
+export async function fetchTrendReviewRows(): Promise<{
+  data: TrendReviewRow[] | null;
   error: string | null;
   failureKind: QueryFailureKind | null;
 }> {
@@ -128,12 +129,31 @@ export async function fetchStrippedReviews(): Promise<{
     };
   }
 
-  const stripped = reviewsResult.data.map((review) =>
-    stripReviewForAnalysis(
+  const rows = reviewsResult.data.map((review) => ({
+    id: review.id,
+    handled: Boolean(review.handled),
+    stripped: stripReviewForAnalysis(
       review,
       datesResult.data.get(review.bookingId) ?? null
-    )
-  );
+    ),
+  }));
 
-  return queryOk(stripped);
+  return queryOk(rows);
+}
+
+export async function fetchStrippedReviews(): Promise<{
+  data: StrippedReview[] | null;
+  error: string | null;
+  failureKind: QueryFailureKind | null;
+}> {
+  const result = await fetchTrendReviewRows();
+  if (result.error || !result.data) {
+    return {
+      data: null,
+      error: result.error,
+      failureKind: result.failureKind,
+    };
+  }
+
+  return queryOk(result.data.map((row) => row.stripped));
 }

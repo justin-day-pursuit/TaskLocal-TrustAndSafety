@@ -24,6 +24,7 @@ describe("trend report persist", () => {
       },
       aggregates: computeTrendAggregates([]),
       insights: emptyInsights(),
+      highRiskCases: [],
       groundingSample: [],
       priorSummary: null,
     };
@@ -40,6 +41,7 @@ describe("trend report persist", () => {
     expect(loaded.data?.modelUsed).toBe("gemini-3.5-flash");
     expect(loaded.data?.insights.needsWork.length).toBeGreaterThan(0);
     expect(loaded.data?.insights.flagReasonThemes).toEqual([]);
+    expect(loaded.data?.highRiskCases).toEqual([]);
   });
 
   it("loads an old report missing flagReasonThemes as an empty list", async () => {
@@ -56,6 +58,7 @@ describe("trend report persist", () => {
       },
       aggregates: computeTrendAggregates([]),
       insights: emptyInsights(),
+      highRiskCases: [],
       groundingSample: [],
       priorSummary: null,
     };
@@ -69,6 +72,36 @@ describe("trend report persist", () => {
     expect(loaded.error).toBeNull();
     expect(loaded.data?.insights.flagReasonThemes).toEqual([]);
     expect(loaded.data?.insights.keywordThemes).toEqual([]);
+    expect(loaded.data?.highRiskCases).toEqual([]);
+  });
+
+  it("loads an old report missing highRiskCases as an empty list", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "trends-"));
+    const filePath = path.join(dir, "trends-last-report.json");
+    const report: TrendReport = {
+      generatedAt: "2026-08-24T00:00:00.000Z",
+      modelUsed: "gemini-3.5-flash",
+      watermark: {
+        rowCount: 0,
+        newestCreated: null,
+        comparable: false,
+        fingerprints: [],
+      },
+      aggregates: computeTrendAggregates([]),
+      insights: emptyInsights(),
+      highRiskCases: [],
+      groundingSample: [],
+      priorSummary: null,
+    };
+    const raw = JSON.parse(JSON.stringify(report)) as {
+      highRiskCases?: unknown;
+    };
+    delete raw.highRiskCases;
+    await writeFile(filePath, `${JSON.stringify(raw)}\n`, "utf8");
+
+    const loaded = await loadLastTrendReport(filePath);
+    expect(loaded.error).toBeNull();
+    expect(loaded.data?.highRiskCases).toEqual([]);
   });
 
   it("returns an empty success when no report file exists", async () => {
