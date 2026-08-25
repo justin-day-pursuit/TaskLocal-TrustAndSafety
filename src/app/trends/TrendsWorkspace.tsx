@@ -52,6 +52,19 @@ const CHART_CAPTIONS = {
     "Words that repeat most in review comments. Larger terms are the more common themes in the text.",
 } as const;
 
+const CHART_CAPTIONS = {
+  flaggedReviews:
+    "Count of flagged reviews per month. Taller bars mean more issues reached moderation that month.",
+  flagsByReason:
+    "How often each flag reason appears. The tallest bars are the dominant complaint types.",
+  averageRating:
+    "Mean star rating by month (1–5). The slope shows whether overall sentiment is improving or worsening.",
+  ratingDistribution:
+    "How many reviews landed on each star. A pile-up at 1★ is a safety/quality signal even when the monthly average looks fine.",
+  keywordCloud:
+    "Words that repeat most in review comments. Larger terms are the more common themes in the text.",
+} as const;
+
 export function TrendsWorkspace({
   initialReport,
   autoGenerate,
@@ -206,16 +219,21 @@ export function TrendsWorkspace({
               yLabel="Flagged reviews"
               caption={CHART_CAPTIONS.flaggedReviews}
             />
-            <div className="mt-6">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tl-muted">
-                Flags by reason
-              </p>
-              <FlagReasonThemes
-                themes={report.insights.flagReasonThemes}
-                hasFlaggedReasons={report.aggregates.topReasons.length > 0}
-                caption={CHART_CAPTIONS.flagsByReason}
-              />
-            </div>
+            {report.aggregates.topReasons.length > 0 ? (
+              <div className="mt-6">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tl-muted">
+                  Flags by reason
+                </p>
+                <BarChart
+                  data={report.aggregates.topReasons.map((point) => ({
+                    label: truncateLabel(point.reason),
+                    value: point.count,
+                  }))}
+                  yLabel="Count"
+                  caption={CHART_CAPTIONS.flagsByReason}
+                />
+              </div>
+            ) : null}
           </ChartCard>
 
           <ChartCard
