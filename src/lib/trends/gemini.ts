@@ -9,12 +9,15 @@ import {
   resolveGeminiModels,
 } from "@/lib/trends/env";
 import { parseGeminiInsightsText } from "@/lib/trends/insights";
-import { selectRowsForGemini } from "@/lib/trends/prompt-rows";
+import {
+  selectRowsForGemini,
+  type GeminiRowSelection,
+} from "@/lib/trends/prompt-rows";
 import type {
   GeminiInsights,
-  StrippedReview,
   TrendAggregates,
   TrendReport,
+  TrendReviewRow,
 } from "@/lib/trends/types";
 
 const INSIGHTS_SCHEMA: Schema = {
@@ -69,6 +72,36 @@ const INSIGHTS_SCHEMA: Schema = {
         required: ["theme", "meaning", "examples"],
       },
     },
+    highRiskItems: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          sampleId: { type: Type.STRING },
+          severity: {
+            type: Type.STRING,
+            format: "enum",
+            enum: ["critical", "high"],
+          },
+          riskType: {
+            type: Type.STRING,
+            format: "enum",
+            enum: ["safety", "trust", "policy", "platform"],
+          },
+          summary: { type: Type.STRING },
+          whyItMatters: { type: Type.STRING },
+          recommendedAction: { type: Type.STRING },
+        },
+        required: [
+          "sampleId",
+          "severity",
+          "riskType",
+          "summary",
+          "whyItMatters",
+          "recommendedAction",
+        ],
+      },
+    },
     changeSinceLast: {
       type: Type.OBJECT,
       properties: {
@@ -103,26 +136,27 @@ const INSIGHTS_SCHEMA: Schema = {
     "keywordsExplanation",
     "keywordThemes",
     "flagReasonThemes",
+    "highRiskItems",
     "changeSinceLast",
   ],
 };
 
 export interface AnalyzeWithGeminiInput {
   apiKey: string;
-  rows: StrippedReview[];
+  rows: TrendReviewRow[];
   aggregates: TrendAggregates;
-  newRows: StrippedReview[];
+  newRows: TrendReviewRow[];
   previous: TrendReport | null;
   hasPrevious: boolean;
   newReviewCount: number;
   abortSignal?: AbortSignal;
 }
 
-function buildPrompt(input: AnalyzeWithGeminiInput): string {
-  const { promptRows, promptNewRows } = selectRowsForGemini(
-    input.rows,
-    input.newRows
-  );
+function buildPrompt(
+  input: AnalyzeWithGeminiInput,
+  selection: GeminiRowSelection
+): string {
+  const { promptRows, promptNewRows } = selection;
 
   const previousSummary = input.previous
     ? {
@@ -157,6 +191,9 @@ function buildPrompt(input: AnalyzeWithGeminiInput): string {
     "Keep bullet strings short (one or two sentences).",
     "Flag reasons: the reason field is free-typed user text, not a closed enum. Do not treat each unique string as its own category. Cluster flagged reasons into a few short themes in flagReasonThemes. Each theme needs a short label (theme), one-sentence meaning, and 1-2 verbatim example phrases copied from the untrusted reason text. Do not invent quotes. Do not invent counts. If there are no flagged reasons, return an empty flagReasonThemes array.",
     "Comment keywords: keywordThemes must include only terms that actually appear in the comment sample and that carry sentiment (disappointed, great, rude), task (cleaning, plumbing, assembly), issue (no-show, late, damaged, incomplete), or praise (professional, thorough, friendly). Drop filler and vague words such as service, time, job, work, and pronouns. Do not invent terms. Each item is term, meaning, and category (sentiment, task, issue, or praise). Do not include counts; local aggregates are the source of truth for frequency.",
+    "High-risk cases: return only sample rows that currently need human review because they are, or could become, a high or critical Trust & Safety issue. Put them in highRiskItems. Cite only sampleId values from this sample (S1, S2, …). Do not invent IDs or counts. Do not use review or booking IDs.",
+    "severity is critical or high. riskType is one of: safety (harm, threats, harassment, discrimination, unsafe service); trust (fraud, scams, impersonation, fake or coordinated reviews); policy (serious conduct or marketplace abuse beyond ordinary complaints); platform (review/flag-system abuse, or contradictory or impossible claims that suggest data or marketplace integrity problems).",
+    "Prefer unhandled rows. Still include unflagged comments if the text itself is high-risk. Skip ordinary low ratings, late arrivals, and already-handled items unless residual risk is still critical. Return an empty highRiskItems array when nothing qualifies. Each item needs sampleId, severity, riskType, summary, whyItMatters, and recommendedAction.",
     "",
     "Current aggregates (source of truth):",
     JSON.stringify(input.aggregates),
@@ -168,7 +205,7 @@ function buildPrompt(input: AnalyzeWithGeminiInput): string {
     `New rows since last report (${promptNewRows.length} of ${input.newRows.length}):`,
     JSON.stringify(promptNewRows),
     "",
-    `Review sample for qualitative analysis (${promptRows.length} of ${input.rows.length} rows; columns are reviewer, rating, comment, flag, reason, created, serviceDate):`,
+    `Review sample for qualitative analysis (${promptRows.length} of ${input.rows.length} rows; columns are sampleId, handled, reviewer, rating, comment, flag, reason, created, serviceDate):`,
     JSON.stringify(promptRows),
     "END UNTRUSTED USER REVIEW TEXT.",
   ].join("\n");
@@ -200,10 +237,17 @@ async function generateOnModel(
 
 export async function analyzeWithGemini(
   input: AnalyzeWithGeminiInput
-): Promise<{ insights: GeminiInsights | null; modelUsed: string; error: string | null }> {
+): Promise<{
+  insights: GeminiInsights | null;
+  modelUsed: string;
+  error: string | null;
+  sampleById: Map<string, TrendReviewRow>;
+}> {
   const models = resolveGeminiModels(getGeminiModelOverride());
   const ai = new GoogleGenAI({ apiKey: input.apiKey });
-  const prompt = buildPrompt(input);
+  const selection = selectRowsForGemini(input.rows, input.newRows);
+  const prompt = buildPrompt(input, selection);
+  const sampleById = selection.sampleById;
 
   for (const model of models) {
     try {
@@ -214,7 +258,7 @@ export async function analyzeWithGemini(
         input.abortSignal
       );
       const insights = parseGeminiInsightsText(text);
-      return { insights, modelUsed: model, error: null };
+      return { insights, modelUsed: model, error: null, sampleById };
     } catch (error) {
       console.error(`[trends] Gemini ${model} failed`, error);
 
@@ -227,6 +271,7 @@ export async function analyzeWithGemini(
           insights: null,
           modelUsed: model,
           error: publicGeminiError(error),
+          sampleById,
         };
       }
 
@@ -235,6 +280,7 @@ export async function analyzeWithGemini(
           insights: null,
           modelUsed: model,
           error: publicGeminiError(error),
+          sampleById,
         };
       }
 
@@ -248,5 +294,6 @@ export async function analyzeWithGemini(
     insights: null,
     modelUsed: "",
     error: publicGeminiError(new Error("all models failed")),
+    sampleById,
   };
 }

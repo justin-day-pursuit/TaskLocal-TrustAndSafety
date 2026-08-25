@@ -1,10 +1,24 @@
 import {
+  HIGH_RISK_SEVERITIES,
+  HIGH_RISK_TYPES,
   KEYWORD_THEME_CATEGORIES,
   type GeminiFlagReasonTheme,
+  type GeminiHighRiskItem,
   type GeminiInsights,
   type GeminiKeywordTheme,
+  type HighRiskCase,
+  type HighRiskSeverity,
+  type HighRiskType,
   type KeywordThemeCategory,
+  type TrendReviewRow,
 } from "@/lib/trends/types";
+
+export const MAX_HIGH_RISK_CASES = 10;
+const SAMPLE_ID_PATTERN = /^S\d+$/;
+const SEVERITY_RANK: Record<HighRiskSeverity, number> = {
+  critical: 0,
+  high: 1,
+};
 
 export function emptyInsights(message?: string): GeminiInsights {
   const detail =
@@ -25,6 +39,7 @@ export function emptyInsights(message?: string): GeminiInsights {
     keywordsExplanation: detail,
     keywordThemes: [],
     flagReasonThemes: [],
+    highRiskItems: [],
     changeSinceLast: {
       hasPrevious: false,
       newReviewCount: 0,
@@ -84,12 +99,96 @@ export function parseFlagReasonThemes(value: unknown): GeminiFlagReasonTheme[] {
     .filter((theme) => theme.theme.length > 0 || theme.meaning.length > 0);
 }
 
+function parseHighRiskSeverity(value: unknown): HighRiskSeverity | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return HIGH_RISK_SEVERITIES.find((severity) => severity === value) ?? null;
+}
+
+function parseHighRiskType(value: unknown): HighRiskType | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return HIGH_RISK_TYPES.find((riskType) => riskType === value) ?? null;
+}
+
+export function parseHighRiskItems(value: unknown): GeminiHighRiskItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item) => isRecord(item))
+    .map((item) => {
+      const sampleId = String(item.sampleId ?? "").trim();
+      const severity = parseHighRiskSeverity(item.severity);
+      const riskType = parseHighRiskType(item.riskType);
+      if (!SAMPLE_ID_PATTERN.test(sampleId) || !severity || !riskType) {
+        return null;
+      }
+      return {
+        sampleId,
+        severity,
+        riskType,
+        summary: String(item.summary ?? ""),
+        whyItMatters: String(item.whyItMatters ?? ""),
+        recommendedAction: String(item.recommendedAction ?? ""),
+      };
+    })
+    .filter((item): item is GeminiHighRiskItem => item !== null);
+}
+
+export function groundHighRiskItems(
+  items: GeminiHighRiskItem[],
+  sampleById: Map<string, TrendReviewRow>
+): HighRiskCase[] {
+  const grounded: HighRiskCase[] = [];
+  const seenReviewIds = new Set<string>();
+
+  const sorted = [...items].sort(
+    (left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity]
+  );
+
+  for (const item of sorted) {
+    const row = sampleById.get(item.sampleId);
+    if (!row || seenReviewIds.has(row.id)) {
+      continue;
+    }
+    seenReviewIds.add(row.id);
+    grounded.push({
+      reviewId: row.id,
+      sampleId: item.sampleId,
+      severity: item.severity,
+      riskType: item.riskType,
+      summary: item.summary,
+      whyItMatters: item.whyItMatters,
+      recommendedAction: item.recommendedAction,
+      flag: row.stripped.flag,
+      handled: row.handled,
+      comment: row.stripped.comment,
+      reason: row.stripped.reason,
+      rating: row.stripped.rating,
+      created: row.stripped.created,
+      serviceDate: row.stripped.serviceDate,
+    });
+    if (grounded.length >= MAX_HIGH_RISK_CASES) {
+      break;
+    }
+  }
+
+  return grounded;
+}
+
 export function normalizeGeminiInsights(insights: GeminiInsights): GeminiInsights {
   return {
     ...insights,
     keywordThemes: parseKeywordThemes(insights.keywordThemes),
     flagReasonThemes: parseFlagReasonThemes(
       (insights as { flagReasonThemes?: unknown }).flagReasonThemes
+    ),
+    highRiskItems: parseHighRiskItems(
+      (insights as { highRiskItems?: unknown }).highRiskItems
     ),
   };
 }
@@ -100,6 +199,7 @@ export function isGeminiInsights(value: unknown): value is GeminiInsights {
   }
 
   const flagReasonThemes = value.flagReasonThemes;
+  const highRiskItems = value.highRiskItems;
 
   return (
     Array.isArray(value.goingWell) &&
@@ -113,6 +213,7 @@ export function isGeminiInsights(value: unknown): value is GeminiInsights {
     typeof value.keywordsExplanation === "string" &&
     Array.isArray(value.keywordThemes) &&
     (flagReasonThemes === undefined || Array.isArray(flagReasonThemes)) &&
+    (highRiskItems === undefined || Array.isArray(highRiskItems)) &&
     isRecord(value.changeSinceLast)
   );
 }
@@ -144,6 +245,9 @@ export function parseGeminiInsightsText(text: string): GeminiInsights {
     keywordThemes: parsed.keywordThemes,
     flagReasonThemes: parseFlagReasonThemes(
       (parsed as { flagReasonThemes?: unknown }).flagReasonThemes
+    ),
+    highRiskItems: parseHighRiskItems(
+      (parsed as { highRiskItems?: unknown }).highRiskItems
     ),
     changeSinceLast: {
       hasPrevious: Boolean(change.hasPrevious),

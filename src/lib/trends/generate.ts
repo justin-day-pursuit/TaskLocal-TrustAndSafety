@@ -2,9 +2,9 @@ import { computeTrendAggregates } from "@/lib/trends/aggregates";
 import { buildWatermark, splitNewVsPrior } from "@/lib/trends/delta";
 import { getGeminiApiKey } from "@/lib/trends/env";
 import { analyzeWithGemini } from "@/lib/trends/gemini";
-import { emptyInsights, groundChangeSinceLast } from "@/lib/trends/insights";
+import { emptyInsights, groundChangeSinceLast, groundHighRiskItems } from "@/lib/trends/insights";
 import { loadLastTrendReport, saveTrendReport } from "@/lib/trends/persist";
-import { fetchStrippedReviews } from "@/lib/trends/query";
+import { fetchTrendReviewRows } from "@/lib/trends/query";
 import type { GenerateTrendsResult, StrippedReview, TrendReport } from "@/lib/trends/types";
 import {
   GEMINI_QUERY_TIMEOUT_MS,
@@ -33,7 +33,7 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
   }
   const apiKey = keyResult.key;
 
-  const fetched = await fetchStrippedReviews();
+  const fetched = await fetchTrendReviewRows();
   if (fetched.error || !fetched.data) {
     return {
       data: null,
@@ -43,7 +43,8 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
     };
   }
 
-  const rows = fetched.data;
+  const trendRows = fetched.data;
+  const rows = trendRows.map((row) => row.stripped);
   const previousResult = await loadLastTrendReport();
   if (previousResult.error) {
     return {
@@ -64,16 +65,18 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
     delta.newRows.length
   );
   let modelUsed = "none (no reviews)";
+  let highRiskCases = groundHighRiskItems([], new Map());
 
   if (rows.length > 0) {
     try {
+      const newRowSet = new Set(delta.newRows);
       const gemini = await withTimeout(
         (signal) =>
           analyzeWithGemini({
             apiKey,
-            rows,
+            rows: trendRows,
             aggregates,
-            newRows: delta.newRows,
+            newRows: trendRows.filter((row) => newRowSet.has(row.stripped)),
             previous,
             hasPrevious: delta.hasPrevious,
             newReviewCount: delta.newRows.length,
@@ -100,6 +103,10 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
         delta.hasPrevious,
         delta.newRows.length
       );
+      highRiskCases = groundHighRiskItems(
+        insights.highRiskItems,
+        gemini.sampleById
+      );
       modelUsed = gemini.modelUsed;
     } catch (error) {
       const failure = toQueryFailure(
@@ -121,6 +128,7 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
     watermark,
     aggregates,
     insights,
+    highRiskCases,
     groundingSample: mostRecentRows(rows, GROUNDING_SAMPLE_SIZE),
     priorSummary: previous
       ? {

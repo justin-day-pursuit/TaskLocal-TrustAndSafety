@@ -7,6 +7,7 @@ import { BarChart } from "@/components/trends/BarChart";
 import { ChartCard } from "@/components/trends/ChartCard";
 import { FlagReasonThemes } from "@/components/trends/FlagReasonThemes";
 import { GroundingTables } from "@/components/trends/GroundingTables";
+import { HighRiskCases } from "@/components/trends/HighRiskCases";
 import { InsightsPanel } from "@/components/trends/InsightsPanel";
 import { LineChart } from "@/components/trends/LineChart";
 import { WordCloud } from "@/components/trends/WordCloud";
@@ -205,6 +206,8 @@ export function TrendsWorkspace({
       {report ? (
         <>
           <InsightsPanel insights={report.insights} showChange={showChange} />
+
+          <HighRiskCases cases={report.highRiskCases ?? []} />
 
           <ChartCard
             title="Flag / issue trends"

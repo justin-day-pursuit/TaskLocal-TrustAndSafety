@@ -22,6 +22,44 @@ export interface StrippedReview {
   serviceDate: string | null;
 }
 
+export interface TrendReviewRow {
+  id: string;
+  handled: boolean;
+  stripped: StrippedReview;
+}
+
+export const HIGH_RISK_SEVERITIES = ["critical", "high"] as const;
+export type HighRiskSeverity = (typeof HIGH_RISK_SEVERITIES)[number];
+
+export const HIGH_RISK_TYPES = ["safety", "trust", "policy", "platform"] as const;
+export type HighRiskType = (typeof HIGH_RISK_TYPES)[number];
+
+export interface GeminiHighRiskItem {
+  sampleId: string;
+  severity: HighRiskSeverity;
+  riskType: HighRiskType;
+  summary: string;
+  whyItMatters: string;
+  recommendedAction: string;
+}
+
+export interface HighRiskCase {
+  reviewId: string;
+  sampleId: string;
+  severity: HighRiskSeverity;
+  riskType: HighRiskType;
+  summary: string;
+  whyItMatters: string;
+  recommendedAction: string;
+  flag: boolean;
+  handled: boolean;
+  comment: string;
+  reason: string;
+  rating: number;
+  created: string;
+  serviceDate: string | null;
+}
+
 export interface MonthlyFlagPoint {
   month: string;
   total: number;
@@ -102,6 +140,7 @@ export interface GeminiInsights {
   keywordsExplanation: string;
   keywordThemes: GeminiKeywordTheme[];
   flagReasonThemes: GeminiFlagReasonTheme[];
+  highRiskItems: GeminiHighRiskItem[];
   changeSinceLast: GeminiChangeSinceLast;
 }
 
@@ -118,6 +157,7 @@ export interface TrendReport {
   watermark: TrendWatermark;
   aggregates: TrendAggregates;
   insights: GeminiInsights;
+  highRiskCases: HighRiskCase[];
   groundingSample: StrippedReview[];
   priorSummary: {
     goingWell: string[];
