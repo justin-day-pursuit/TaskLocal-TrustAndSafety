@@ -51,7 +51,7 @@ const INSIGHTS_SCHEMA: Schema = {
             enum: ["sentiment", "task", "issue", "praise"],
           },
         },
-        required: ["term", "meaning"],
+        required: ["term", "meaning", "category"],
       },
     },
     flagReasonThemes: {
@@ -156,6 +156,7 @@ function buildPrompt(input: AnalyzeWithGeminiInput): string {
     "If hasPrevious is true and newReviewCount is 0, say there is no new review data since the last run and restate the overall trend.",
     "Keep bullet strings short (one or two sentences).",
     "Flag reasons: the reason field is free-typed user text, not a closed enum. Do not treat each unique string as its own category. Cluster flagged reasons into a few short themes in flagReasonThemes. Each theme needs a short label (theme), one-sentence meaning, and 1-2 verbatim example phrases copied from the untrusted reason text. Do not invent quotes. Do not invent counts. If there are no flagged reasons, return an empty flagReasonThemes array.",
+    "Comment keywords: keywordThemes must include only terms that actually appear in the comment sample and that carry sentiment (disappointed, great, rude), task (cleaning, plumbing, assembly), issue (no-show, late, damaged, incomplete), or praise (professional, thorough, friendly). Drop filler and vague words such as service, time, job, work, and pronouns. Do not invent terms. Each item is term, meaning, and category (sentiment, task, issue, or praise). Do not include counts; local aggregates are the source of truth for frequency.",
     "",
     "Current aggregates (source of truth):",
     JSON.stringify(input.aggregates),
