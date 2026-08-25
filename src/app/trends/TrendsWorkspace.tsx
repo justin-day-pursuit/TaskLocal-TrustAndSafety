@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { BarChart } from "@/components/trends/BarChart";
 import { ChartCard } from "@/components/trends/ChartCard";
+import { FlagReasonThemes } from "@/components/trends/FlagReasonThemes";
 import { GroundingTables } from "@/components/trends/GroundingTables";
 import { InsightsPanel } from "@/components/trends/InsightsPanel";
 import { LineChart } from "@/components/trends/LineChart";
@@ -38,18 +39,11 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function truncateLabel(label: string, max = 16): string {
-  if (label.length <= max) {
-    return label;
-  }
-  return `${label.slice(0, max)}…`;
-}
-
 const CHART_CAPTIONS = {
   flaggedReviews:
     "Count of flagged reviews per month. Taller bars mean more issues reached moderation that month.",
   flagsByReason:
-    "How often each flag reason appears. The tallest bars are the dominant complaint types.",
+    "Flag reasons are free-typed. Similar wording is grouped into themes. Quoted phrases are copied from the original reason text.",
   averageRating:
     "Mean star rating by month (1–5). The slope shows whether overall sentiment is improving or worsening.",
   ratingDistribution:
@@ -212,21 +206,16 @@ export function TrendsWorkspace({
               yLabel="Flagged reviews"
               caption={CHART_CAPTIONS.flaggedReviews}
             />
-            {report.aggregates.topReasons.length > 0 ? (
-              <div className="mt-6">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tl-muted">
-                  Flags by reason
-                </p>
-                <BarChart
-                  data={report.aggregates.topReasons.map((point) => ({
-                    label: truncateLabel(point.reason),
-                    value: point.count,
-                  }))}
-                  yLabel="Count"
-                  caption={CHART_CAPTIONS.flagsByReason}
-                />
-              </div>
-            ) : null}
+            <div className="mt-6">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tl-muted">
+                Flags by reason
+              </p>
+              <FlagReasonThemes
+                themes={report.insights.flagReasonThemes}
+                hasFlaggedReasons={report.aggregates.topReasons.length > 0}
+                caption={CHART_CAPTIONS.flagsByReason}
+              />
+            </div>
           </ChartCard>
 
           <ChartCard

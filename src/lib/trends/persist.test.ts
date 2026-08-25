@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -39,6 +39,36 @@ describe("trend report persist", () => {
     expect(loaded.failureKind).toBeNull();
     expect(loaded.data?.modelUsed).toBe("gemini-3.5-flash");
     expect(loaded.data?.insights.needsWork.length).toBeGreaterThan(0);
+    expect(loaded.data?.insights.flagReasonThemes).toEqual([]);
+  });
+
+  it("loads an old report missing flagReasonThemes as an empty list", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "trends-"));
+    const filePath = path.join(dir, "trends-last-report.json");
+    const report: TrendReport = {
+      generatedAt: "2026-08-24T00:00:00.000Z",
+      modelUsed: "gemini-3.5-flash",
+      watermark: {
+        rowCount: 0,
+        newestCreated: null,
+        comparable: false,
+        fingerprints: [],
+      },
+      aggregates: computeTrendAggregates([]),
+      insights: emptyInsights(),
+      groundingSample: [],
+      priorSummary: null,
+    };
+    const raw = JSON.parse(JSON.stringify(report)) as {
+      insights: { flagReasonThemes?: unknown };
+    };
+    delete raw.insights.flagReasonThemes;
+    await writeFile(filePath, `${JSON.stringify(raw)}\n`, "utf8");
+
+    const loaded = await loadLastTrendReport(filePath);
+    expect(loaded.error).toBeNull();
+    expect(loaded.data?.insights.flagReasonThemes).toEqual([]);
+    expect(loaded.data?.insights.keywordThemes).toEqual([]);
   });
 
   it("returns an empty success when no report file exists", async () => {

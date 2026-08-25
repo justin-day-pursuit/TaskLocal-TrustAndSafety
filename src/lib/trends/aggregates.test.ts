@@ -159,31 +159,84 @@ describe("new vs prior split", () => {
 });
 
 describe("parseGeminiInsightsText", () => {
+  const baseInsights = {
+    goingWell: ["Ratings are mostly high"],
+    needsWork: ["No-show flags rose"],
+    actionPlan: ["Follow up on no-shows this week"],
+    flagTrendsExplanation: "Flags clustered in January.",
+    flagTrendsConclusions: "Watch no-show volume.",
+    sentimentExplanation: "Average rating dipped in January.",
+    sentimentConclusions: "Recovered in February.",
+    sentimentOverallLabel: "mixed",
+    keywordsExplanation: "Cleaning and professional dominate comments.",
+    keywordThemes: [{ term: "professional", meaning: "service quality" }],
+    changeSinceLast: {
+      hasPrevious: true,
+      newReviewCount: 1,
+      whatChanged: ["One new flagged review"],
+      emergingTrends: ["No-shows"],
+    },
+  };
+
   it("parses JSON insights and ignores markdown fences", () => {
     const insights = parseGeminiInsightsText(`\`\`\`json
-{
-  "goingWell": ["Ratings are mostly high"],
-  "needsWork": ["No-show flags rose"],
-  "actionPlan": ["Follow up on no-shows this week"],
-  "flagTrendsExplanation": "Flags clustered in January.",
-  "flagTrendsConclusions": "Watch no-show volume.",
-  "sentimentExplanation": "Average rating dipped in January.",
-  "sentimentConclusions": "Recovered in February.",
-  "sentimentOverallLabel": "mixed",
-  "keywordsExplanation": "Cleaning and professional dominate comments.",
-  "keywordThemes": [{ "term": "professional", "meaning": "service quality" }],
-  "changeSinceLast": {
-    "hasPrevious": true,
-    "newReviewCount": 1,
-    "whatChanged": ["One new flagged review"],
-    "emergingTrends": ["No-shows"]
-  }
-}
+${JSON.stringify(baseInsights)}
 \`\`\``);
 
     expect(insights.actionPlan[0]).toMatch(/Follow up/);
     expect(insights.changeSinceLast.newReviewCount).toBe(1);
     expect(insights.keywordThemes[0]?.term).toBe("professional");
+    expect(insights.flagReasonThemes).toEqual([]);
+  });
+
+  it("treats a missing flagReasonThemes field as an empty list", () => {
+    const insights = parseGeminiInsightsText(JSON.stringify(baseInsights));
+    expect(insights.flagReasonThemes).toEqual([]);
+  });
+
+  it("parses flagReasonThemes without inventing counts", () => {
+    const insights = parseGeminiInsightsText(
+      JSON.stringify({
+        ...baseInsights,
+        flagReasonThemes: [
+          {
+            theme: "No-show",
+            meaning: "The provider did not arrive.",
+            examples: ["provider never showed", "no-show"],
+          },
+          null,
+          { theme: "", meaning: "", examples: [] },
+        ],
+      })
+    );
+
+    expect(insights.flagReasonThemes).toEqual([
+      {
+        theme: "No-show",
+        meaning: "The provider did not arrive.",
+        examples: ["provider never showed", "no-show"],
+      },
+    ]);
+    expect(JSON.stringify(insights.flagReasonThemes)).not.toMatch(/"count"/);
+  });
+
+  it("keeps keyword category when valid and omits it otherwise", () => {
+    const insights = parseGeminiInsightsText(
+      JSON.stringify({
+        ...baseInsights,
+        keywordThemes: [
+          { term: "professional", meaning: "service quality", category: "praise" },
+          { term: "late", meaning: "punctuality", category: "not-a-category" },
+          { term: "cleaning", meaning: "job type" },
+        ],
+      })
+    );
+
+    expect(insights.keywordThemes).toEqual([
+      { term: "professional", meaning: "service quality", category: "praise" },
+      { term: "late", meaning: "punctuality" },
+      { term: "cleaning", meaning: "job type" },
+    ]);
   });
 
   it("skips null keyword themes instead of throwing", () => {
@@ -211,5 +264,6 @@ describe("parseGeminiInsightsText", () => {
     expect(insights.keywordThemes).toEqual([
       { term: "late", meaning: "punctuality" },
     ]);
+    expect(insights.flagReasonThemes).toEqual([]);
   });
 });

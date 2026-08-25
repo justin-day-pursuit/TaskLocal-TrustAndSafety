@@ -62,9 +62,25 @@ export interface TrendAggregates {
   topKeywords: KeywordCount[];
 }
 
+export const KEYWORD_THEME_CATEGORIES = [
+  "sentiment",
+  "task",
+  "issue",
+  "praise",
+] as const;
+
+export type KeywordThemeCategory = (typeof KEYWORD_THEME_CATEGORIES)[number];
+
 export interface GeminiKeywordTheme {
   term: string;
   meaning: string;
+  category?: KeywordThemeCategory;
+}
+
+export interface GeminiFlagReasonTheme {
+  theme: string;
+  meaning: string;
+  examples: string[];
 }
 
 export interface GeminiChangeSinceLast {
@@ -85,6 +101,7 @@ export interface GeminiInsights {
   sentimentOverallLabel: string;
   keywordsExplanation: string;
   keywordThemes: GeminiKeywordTheme[];
+  flagReasonThemes: GeminiFlagReasonTheme[];
   changeSinceLast: GeminiChangeSinceLast;
 }
 
