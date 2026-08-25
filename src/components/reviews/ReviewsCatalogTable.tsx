@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import {
   ExpandableReviewRow,
@@ -38,8 +39,27 @@ function truncateComment(comment: string): string {
   return `${comment.slice(0, COMMENT_MAX_LENGTH)}…`;
 }
 
-function formatBoolean(value: boolean): string {
-  return value ? "Yes" : "No";
+function formatReportStatus(review: Review, needsAction: boolean): ReactNode {
+  if (needsAction) {
+    return (
+      <Link
+        href="/?view=unhandled"
+        onClick={(event) => event.stopPropagation()}
+        className="font-medium text-amber-900 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+      >
+        Reported · Unhandled
+      </Link>
+    );
+  }
+
+  return review.flag ? "Reported" : "Not reported";
+}
+
+function formatResolutionStatus(review: Review): string {
+  if (!review.flag) {
+    return "—";
+  }
+  return review.handled ? "Resolved" : "Unresolved";
 }
 
 const SUMMARY_COL_SPAN = 9;
@@ -54,7 +74,7 @@ export function ReviewsCatalogTable({
 }: ReviewsCatalogTableProps) {
   if (reviews.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center text-sm text-zinc-500">
+      <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center text-base text-zinc-600">
         {emptyMessage}
       </div>
     );
@@ -69,35 +89,37 @@ export function ReviewsCatalogTable({
       initialExpandedId={expandedReviewId}
     >
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
-        <table className="min-w-full divide-y divide-zinc-200 text-sm">
+        <table className="min-w-full divide-y divide-zinc-200 text-base">
           <thead className="bg-zinc-50">
             <tr>
               <th className="w-8 px-2 py-3" aria-label="Expand row">
                 <span className="sr-only">Expand</span>
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">ID</th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
+                ID
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
                 Booking
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
                 Reviewer
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
                 Rating
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
                 Comment
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
-                Flag
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
+                Report
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
                 Reason
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
-                Handled
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
+                Resolution
               </th>
-              <th className="px-4 py-3 text-left font-medium text-zinc-600">
+              <th className="px-4 py-3 text-left text-sm font-medium text-zinc-700">
                 Created
               </th>
             </tr>
@@ -121,10 +143,10 @@ export function ReviewsCatalogTable({
                   }
                   summaryCells={
                     <>
-                      <td className="px-4 py-3 font-mono text-xs text-zinc-800">
+                      <td className="px-4 py-3 font-mono text-sm text-zinc-800">
                         {review.id}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-zinc-800">
+                      <td className="px-4 py-3 font-mono text-sm text-zinc-800">
                         {review.bookingId}
                       </td>
                       <td className="px-4 py-3 capitalize text-zinc-800">
@@ -138,25 +160,15 @@ export function ReviewsCatalogTable({
                         {truncateComment(review.comment)}
                       </td>
                       <td className="px-4 py-3 text-zinc-800">
-                        {needsAction ? (
-                          <Link
-                            href="/action-needed"
-                            onClick={(event) => event.stopPropagation()}
-                            className="font-medium text-amber-800 underline-offset-2 hover:underline"
-                          >
-                            Yes
-                          </Link>
-                        ) : (
-                          formatBoolean(review.flag)
-                        )}
+                        {formatReportStatus(review, needsAction)}
                       </td>
                       <td className="px-4 py-3 text-zinc-800">
                         {review.reason || "—"}
                       </td>
                       <td className="px-4 py-3 text-zinc-800">
-                        {formatBoolean(review.handled)}
+                        {formatResolutionStatus(review)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-zinc-600">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-zinc-600">
                         {formatDate(review.createdAt)}
                       </td>
                     </>

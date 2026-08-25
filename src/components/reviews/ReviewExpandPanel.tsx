@@ -48,9 +48,6 @@ function formatDateTime(iso: string): string {
   });
 }
 
-function formatBoolean(value: boolean): string {
-  return value ? "Yes" : "No";
-}
 
 function formatServiceDate(value: string | null): string {
   if (!value) {
@@ -98,10 +95,10 @@ export function ReviewExpandPanel({
             </>
           ) : needsAction ? (
             <Link
-              href="/action-needed"
-              className="text-sm font-medium text-amber-800 underline-offset-2 hover:underline"
+              href="/?view=unhandled"
+              className="text-sm font-medium text-amber-900 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
             >
-              View in action needed
+              View unhandled reports
             </Link>
           ) : null}
         </div>
@@ -125,8 +122,20 @@ export function ReviewExpandPanel({
             value={<span className="capitalize">{review.reviewerRole}</span>}
           />
           <DetailField label="Rating" value={review.rating} />
-          <DetailField label="Flag" value={formatBoolean(review.flag)} />
-          <DetailField label="Handled" value={formatBoolean(review.handled)} />
+          <DetailField
+            label="Report"
+            value={review.flag ? "Reported" : "Not reported"}
+          />
+          <DetailField
+            label="Resolution"
+            value={
+              review.flag
+                ? review.handled
+                  ? "Resolved"
+                  : "Unresolved"
+                : "—"
+            }
+          />
           <DetailField label="Reason" value={review.reason || "—"} />
           <DetailField
             label="Created"

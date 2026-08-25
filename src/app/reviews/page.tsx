@@ -36,9 +36,9 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="shrink-0">
         <h2 className="text-2xl font-semibold text-zinc-900">Reviews</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Full catalog of marketplace reviews — search, filter, and sort across
-          review and booking fields.
+        <p className="mt-1 text-base text-zinc-600">
+          Full catalog of marketplace reviews — search review text and IDs,
+          filter, and sort across review and booking fields.
         </p>
       </div>
 
