@@ -46,6 +46,12 @@ function buildReviewCatalogQuery(
   const supabase = createServerClient();
   let query = supabase.from("Review").select("*", selectOptions);
 
+  if (params.qText) {
+    query = query.or(
+      buildIlikeOrFilter(["comment", "reason"], params.qText)
+    );
+  }
+
   if (params.qReview) {
     query = query.or(
       buildIlikeOrFilter(["id", "bookingId"], params.qReview)
@@ -56,11 +62,11 @@ function buildReviewCatalogQuery(
     query = query.eq("reviewerRole", params.reviewerRole);
   }
 
-  if (params.flag !== "all") {
-    query = query.eq("flag", params.flag === "true");
+  if (params.report !== "all") {
+    query = query.eq("flag", params.report === "true");
   }
 
-  if (params.handled !== "all" && params.flag !== "false") {
+  if (params.handled !== "all" && params.report !== "false") {
     query = query.eq("handled", params.handled === "true");
   }
 
@@ -196,7 +202,6 @@ async function getReviewCatalogBookingFirst(
 ): Promise<PaginatedReviewListResult> {
   const bookingResult = await queryBookingsForReviewCatalog({
     qBooking: params.qBooking,
-    bookingStatus: params.bookingStatus,
     sort: isBookingSortField(params.sort) ? params.sort : undefined,
     dir: params.dir,
     limit: POSTGREST_MAX_ROWS,
@@ -282,9 +287,8 @@ function flaggedQueueParams(
 ): ReviewsCatalogParams {
   return {
     reviewerRole: params.reviewerRole ?? "all",
-    flag: "true",
+    report: "true",
     handled: "false",
-    bookingStatus: "all",
     sort: "createdAt",
     dir: "asc",
     createdWithin: "all",
