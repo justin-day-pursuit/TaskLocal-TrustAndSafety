@@ -2,10 +2,14 @@ import { useId } from "react";
 
 import { ChartCaption } from "@/components/trends/ChartCaption";
 import { CHART_COLORS } from "@/lib/trends/chart-layout";
-import type { KeywordCount } from "@/lib/trends/types";
+import {
+  WORD_CLOUD_LAYOUT,
+  layoutCircularWordCloud,
+  type CloudWordInput,
+} from "@/lib/trends/word-cloud-layout";
 
 interface WordCloudProps {
-  keywords: KeywordCount[];
+  items: CloudWordInput[];
   caption?: string;
 }
 
@@ -19,46 +23,51 @@ function wordCloudColor(weight: number): string {
   return CHART_COLORS.line;
 }
 
-export function WordCloud({ keywords, caption }: WordCloudProps) {
+export function WordCloud({ items, caption }: WordCloudProps) {
   const captionId = useId();
+  const size = WORD_CLOUD_LAYOUT.size;
 
-  if (keywords.length === 0) {
+  if (items.length === 0) {
     return (
       <p className="text-sm text-tl-muted">
-        No repeated comment keywords to display yet.
+        Regenerate to build the semantic keyword cloud
       </p>
     );
   }
 
-  const maxCount = Math.max(...keywords.map((item) => item.count), 1);
+  const maxCount = Math.max(...items.map((item) => item.count), 1);
+  const laidOut = layoutCircularWordCloud(items, size);
 
   return (
     <div>
-      <div
-        role="img"
-        aria-label="Keyword cloud"
-        aria-describedby={caption ? captionId : undefined}
-        className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 rounded-[10px] bg-tl-surface px-4 py-6"
-      >
-        {keywords.map((item) => {
-          const weight = item.count / maxCount;
-          const fontSize = 12 + weight * 22;
-          const opacity = 0.7 + weight * 0.3;
-          return (
-            <span
-              key={item.term}
-              title={`${item.term}: ${item.count}`}
-              className="font-medium"
-              style={{
-                fontSize: `${fontSize}px`,
-                opacity,
-                color: wordCloudColor(weight),
-              }}
-            >
-              {item.term}
-            </span>
-          );
-        })}
+      <div className="mx-auto max-w-md">
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          role="img"
+          aria-label="Semantic keyword cloud"
+          aria-describedby={caption ? captionId : undefined}
+          className="h-auto w-full rounded-[10px] bg-tl-surface"
+        >
+          {laidOut.map((word) => {
+            const weight = word.count / maxCount;
+            return (
+              <text
+                key={`${word.category}-${word.term}`}
+                x={word.x}
+                y={word.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={wordCloudColor(weight)}
+                fontSize={word.fontSize}
+                fontWeight={weight >= 0.66 ? 650 : 500}
+                opacity={0.72 + weight * 0.28}
+              >
+                <title>{`${word.term}: ${word.count}`}</title>
+                {word.term}
+              </text>
+            );
+          })}
+        </svg>
       </div>
       {caption ? <ChartCaption id={captionId}>{caption}</ChartCaption> : null}
     </div>

@@ -18,6 +18,7 @@ import {
 import { generateTrendsReportAction } from "@/app/trends/actions";
 import { QUERY_COPY, type QueryFailureKind } from "@/lib/queries/query-status";
 import type { TrendReport } from "@/lib/trends/types";
+import { semanticCloudItems } from "@/lib/trends/word-cloud-layout";
 
 interface TrendsWorkspaceProps {
   initialReport: TrendReport | null;
@@ -49,7 +50,7 @@ const CHART_CAPTIONS = {
   ratingDistribution:
     "How many reviews landed on each star. A pile-up at 1★ is a safety/quality signal even when the monthly average looks fine.",
   keywordCloud:
-    "Words that repeat most in review comments. Larger terms are the more common themes in the text.",
+    "Only sentiment, task, issue, and praise words are plotted. Larger, more central terms showed up more often in comments. Terms sit in four wedges: praise, task, issue, and sentiment.",
 } as const;
 
 export function TrendsWorkspace({
@@ -116,6 +117,17 @@ export function TrendsWorkspace({
 
   const hasReport = report !== null;
   const showChange = Boolean(report?.insights.changeSinceLast.hasPrevious);
+  const cloudItems = report
+    ? semanticCloudItems(
+        report.insights.keywordThemes,
+        report.aggregates.topKeywords
+      )
+    : [];
+  const hasLocalOrThemeKeywords = Boolean(
+    report &&
+      (report.aggregates.topKeywords.length > 0 ||
+        report.insights.keywordThemes.length > 0)
+  );
 
   return (
     <div className="space-y-6">
@@ -253,10 +265,18 @@ export function TrendsWorkspace({
             title="Repeated keywords in comments"
             explanation={report.insights.keywordsExplanation}
           >
-            <WordCloud
-              keywords={report.aggregates.topKeywords}
-              caption={CHART_CAPTIONS.keywordCloud}
-            />
+            {cloudItems.length > 0 ? (
+              <WordCloud
+                items={cloudItems}
+                caption={CHART_CAPTIONS.keywordCloud}
+              />
+            ) : (
+              <p className="text-sm text-tl-muted">
+                {hasLocalOrThemeKeywords
+                  ? "Regenerate to build the semantic keyword cloud"
+                  : "No repeated comment keywords to display yet."}
+              </p>
+            )}
             {report.insights.keywordThemes.length > 0 ? (
               <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-tl-muted">
                 {report.insights.keywordThemes.map((theme, index) => (
