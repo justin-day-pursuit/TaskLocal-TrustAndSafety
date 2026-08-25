@@ -4,6 +4,8 @@ import { ChartCaption } from "@/components/trends/ChartCaption";
 import {
   CHART_COLORS,
   CHART_LAYOUT,
+  formatChartCount,
+  formatChartCountExact,
   getPlotRect,
   layoutBars,
 } from "@/lib/trends/chart-layout";
@@ -19,11 +21,13 @@ export function BarChart({
   data,
   yLabel,
   caption,
-  valueFormat = (value) => String(value),
+  valueFormat,
 }: BarChartProps) {
   const captionId = useId();
   const plot = getPlotRect();
   const { width, height, padding, innerHeight } = plot;
+  const formatTick = valueFormat ?? formatChartCount;
+  const formatExact = valueFormat ?? formatChartCountExact;
 
   if (data.length === 0) {
     return (
@@ -43,20 +47,20 @@ export function BarChart({
         className="h-auto w-full"
       >
         <text
-          x={12}
+          x={CHART_LAYOUT.yAxisTitleX}
           y={padding.top + innerHeight / 2}
           fill={CHART_COLORS.muted}
           fontSize="11"
           textAnchor="middle"
-          transform={`rotate(-90 12 ${padding.top + innerHeight / 2})`}
+          transform={`rotate(-90 ${CHART_LAYOUT.yAxisTitleX} ${padding.top + innerHeight / 2})`}
         >
           {yLabel}
         </text>
-        {[0, 0.5, 1].map((tick) => {
-          const y = padding.top + innerHeight - tick * innerHeight;
-          const value = layout.yMax * tick;
+        {layout.ticks.map((value) => {
+          const y =
+            padding.top + innerHeight - (value / layout.yMax) * innerHeight;
           return (
-            <g key={tick}>
+            <g key={value}>
               <line
                 x1={padding.left}
                 x2={width - padding.right}
@@ -71,7 +75,7 @@ export function BarChart({
                 fill={CHART_COLORS.muted}
                 fontSize="10"
               >
-                {valueFormat(value)}
+                {formatTick(value)}
               </text>
             </g>
           );
@@ -91,7 +95,7 @@ export function BarChart({
                 fill={CHART_COLORS.bar}
                 rx={CHART_LAYOUT.barRadius}
               >
-                <title>{`${point.label}: ${valueFormat(point.value)}`}</title>
+                <title>{`${point.label}: ${formatExact(point.value)}`}</title>
               </rect>
               <text
                 x={bar.x + bar.width / 2}
