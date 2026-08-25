@@ -1,155 +1,242 @@
 import { Suspense } from "react";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
+import { ActionCards } from "@/components/dashboard/ActionCards";
+import { AnalysisOverview } from "@/components/dashboard/AnalysisOverview";
+import { DashboardReportList } from "@/components/dashboard/DashboardReportList";
+import { DashboardReportListFilters } from "@/components/dashboard/DashboardReportListFilters";
+import { FreshnessStatus } from "@/components/dashboard/FreshnessStatus";
+import { PaginationBar } from "@/components/reviews/PaginationBar";
 import {
-  QueryCallStatus,
   QueryFailureStatus,
   QueryLoadingStatus,
 } from "@/components/ui/QueryCallStatus";
-import { StatCard } from "@/components/ui/StatCard";
-import { QUERY_COPY } from "@/lib/queries/query-status";
-import { testConnection } from "@/lib/queries/connection";
-import { getReviewStats } from "@/lib/queries/reviews";
+import { getAppTimeZone } from "@/lib/config/app-timezone";
+import {
+  DEFAULT_PAGE,
+  mergeDashboardParams,
+  parseDashboardParams,
+  dashboardHref,
+  type DashboardParams,
+} from "@/lib/dashboard/search-params";
+import type { PageSize } from "@/lib/reviews/search-params";
+import { hasHighRiskCase } from "@/lib/trends/freshness-display";
+import {
+  buildDashboardListPresentation,
+  getDashboardReportList,
+  getHighRiskCount,
+  getNewReportsTodayCount,
+  getUnhandledReportsCount,
+} from "@/lib/queries/dashboard";
+import { computeFreshness } from "@/lib/trends/freshness";
+import { loadLastTrendReport } from "@/lib/trends/persist";
+import { resolveExpandedReviewId } from "@/lib/reviews/expanded-param";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 120;
 
-export default function DashboardPage() {
+interface DashboardPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const rawParams = await searchParams;
+  const params = parseDashboardParams(rawParams);
+
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="space-y-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-zinc-900">Dashboard</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Overview of review activity and flagged issues across the
-              marketplace.
-            </p>
-          </div>
-          <Link
-            href="/trends?generate=1"
-            className="inline-flex items-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-          >
-            Generate trend report
-          </Link>
-        </div>
-
-        <Suspense
-          fallback={
-            <div className="space-y-3">
-              <QueryLoadingStatus copyKey="connection" />
-              <QueryLoadingStatus copyKey="dashboardStats" />
-            </div>
-          }
-        >
-          <DashboardData />
+    <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50">
+      <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
+        <Suspense fallback={<QueryLoadingStatus copyKey="trendReport" />}>
+          <DashboardFreshnessSection />
         </Suspense>
 
-        <section className="rounded-lg border border-zinc-200 bg-white p-6">
-          <h3 className="text-lg font-medium text-zinc-900">Moderation workflow</h3>
-          <p className="mt-2 text-sm text-zinc-600">
-            Use the Action needed queue to triage open reports, review booking and
-            listing context, and resolve items when reviewed.
-          </p>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-            <li>
-              <Link
-                href="/action-needed"
-                className="font-medium text-zinc-900 underline-offset-2 hover:underline"
-              >
-                Action needed queue
-              </Link>{" "}
-              — oldest unresolved flags first, with repeat-flag counts
-            </li>
-            <li>
-              <Link
-                href="/reviews"
-                className="font-medium text-zinc-900 underline-offset-2 hover:underline"
-              >
-                Reviews catalog
-              </Link>{" "}
-              — browse and filter all reviews, including flagged items
-            </li>
-            <li>
-              Review detail — full review, booking, and listing context before
-              resolving
-            </li>
-            <li>
-              <Link
-                href="/trends?generate=1"
-                className="font-medium text-zinc-900 underline-offset-2 hover:underline"
-              >
-                Generate trend report
-              </Link>{" "}
-              — Gemini analysis of stripped reviews: flag trends, sentiment,
-              keywords, and an action plan
-            </li>
-          </ul>
-        </section>
+        <Suspense fallback={<QueryLoadingStatus copyKey="dashboardStats" />}>
+          <DashboardActionSection params={params} />
+        </Suspense>
+
+        {params.view ? (
+          <Suspense fallback={<QueryLoadingStatus copyKey="flaggedReviews" />}>
+            <DashboardReportSection params={params} />
+          </Suspense>
+        ) : null}
+
+        <Suspense fallback={<QueryLoadingStatus copyKey="trendReport" />}>
+          <DashboardAnalysisSection />
+        </Suspense>
       </div>
     </div>
   );
 }
 
-async function DashboardData() {
-  const [connection, statsResult] = await Promise.all([
-    testConnection(),
-    getReviewStats(),
-  ]);
-
-  const connectionStatus = connection.connected
-    ? "connected"
-    : connection.failureKind === "timeout"
-      ? "timeout"
-      : "error";
+async function DashboardFreshnessSection() {
+  const appTimeZone = getAppTimeZone();
+  const loaded = await loadLastTrendReport();
+  const freshness = computeFreshness({
+    lastSuccessAt: loaded.data?.generatedAt ?? null,
+    now: new Date(),
+    timeZone: appTimeZone,
+  });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-start gap-3">
-        <ConnectionStatus status={connectionStatus} error={connection.error} />
-        {!connection.connected ? (
-          <QueryCallStatus
-            status={connection.failureKind === "timeout" ? "timeout" : "error"}
-            message={
-              connection.failureKind === "timeout"
-                ? QUERY_COPY.connection.timeout
-                : QUERY_COPY.connection.error
-            }
-            detail={
-              connection.failureKind === "timeout" ? null : connection.error
-            }
-          />
-        ) : null}
-      </div>
+    <FreshnessStatus
+      initialReport={loaded.data}
+      initialFreshness={freshness}
+      appTimeZone={appTimeZone}
+      loadError={loaded.error}
+      loadFailureKind={loaded.failureKind}
+    />
+  );
+}
 
-      {statsResult.error ? (
+async function DashboardActionSection({ params }: { params: DashboardParams }) {
+  const appTimeZone = getAppTimeZone();
+  const loaded = await loadLastTrendReport();
+  const searchTerms = loaded.data?.insights.highRiskCase?.searchTerms ?? null;
+  const highRiskConfigured = hasHighRiskCase(loaded.data?.insights.highRiskCase);
+  const analysisStale = computeFreshness({
+    lastSuccessAt: loaded.data?.generatedAt ?? null,
+    now: new Date(),
+    timeZone: appTimeZone,
+  }).isStale;
+
+  const [todayResult, unhandledResult, highRiskResult] = await Promise.all([
+    getNewReportsTodayCount(appTimeZone),
+    getUnhandledReportsCount(),
+    getHighRiskCount(searchTerms),
+  ]);
+
+  return (
+    <ActionCards
+      params={params}
+      counts={{
+        today: todayResult.error ? "—" : todayResult.count,
+        unhandled: unhandledResult.error ? "—" : unhandledResult.count,
+        highRisk: highRiskResult.error ? "—" : highRiskResult.count,
+      }}
+      countErrors={{
+        today: Boolean(todayResult.error),
+        unhandled: Boolean(unhandledResult.error),
+        highRisk: Boolean(highRiskResult.error),
+      }}
+      analysisStale={analysisStale}
+      highRiskConfigured={highRiskConfigured}
+    />
+  );
+}
+
+async function DashboardReportSection({ params }: { params: DashboardParams }) {
+  if (!params.view) {
+    return null;
+  }
+
+  const loaded = await loadLastTrendReport();
+  const searchTerms = loaded.data?.insights.highRiskCase?.searchTerms ?? null;
+  const highRiskConfigured = hasHighRiskCase(loaded.data?.insights.highRiskCase);
+  const listResult = await getDashboardReportList(params, { searchTerms });
+
+  if (listResult.totalCount > 0 && listResult.page !== params.page) {
+    redirect(
+      dashboardHref(mergeDashboardParams(params, { page: listResult.page }))
+    );
+  }
+
+  const presentation = buildDashboardListPresentation(listResult);
+  const expandedReviewId = resolveExpandedReviewId(
+    listResult.reviews,
+    params.expanded
+  );
+
+  const totalPages =
+    listResult.totalCount > 0
+      ? Math.ceil(listResult.totalCount / listResult.pageSize)
+      : 1;
+  const hasPrev = listResult.page > 1;
+  const hasNext = listResult.page < totalPages;
+  const showPageReset =
+    params.page > DEFAULT_PAGE && listResult.totalCount === 0 && !listResult.error;
+
+  function hrefForPage(page: number): string {
+    return dashboardHref(mergeDashboardParams(params, { page }));
+  }
+
+  function hrefForPageSize(pageSize: PageSize): string {
+    return dashboardHref(
+      mergeDashboardParams(params, { page: DEFAULT_PAGE, pageSize })
+    );
+  }
+
+  const pageSizeHrefs = {
+    10: hrefForPageSize(10),
+    25: hrefForPageSize(25),
+    50: hrefForPageSize(50),
+  } as const;
+
+  return (
+    <section aria-labelledby="dashboard-report-list" className="space-y-4">
+      <h3 id="dashboard-report-list" className="text-lg font-medium text-zinc-900">
+        Report list
+      </h3>
+
+      <DashboardReportListFilters params={params} />
+
+      {presentation.primaryError ? (
         <QueryFailureStatus
-          copyKey="dashboardStats"
-          kind={statsResult.failureKind}
-          detail={statsResult.error}
+          copyKey="flaggedReviews"
+          kind={presentation.primaryFailureKind}
+          detail={presentation.primaryError}
         />
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          label="Total Reviews"
-          value={statsResult.data?.total ?? "—"}
-          description="All reviews in the shared database"
-          href="/reviews"
+      {presentation.enrichmentError ? (
+        <QueryFailureStatus
+          copyKey="bookings"
+          kind={presentation.enrichmentFailureKind}
+          detail={presentation.enrichmentError}
         />
-        <StatCard
-          label="Flagged Reviews"
-          value={statsResult.data?.flagged ?? "—"}
-          description="Reviews marked with an issue"
-          href="/reviews?flag=true"
-        />
-        <StatCard
-          label="Unhandled Flags"
-          value={statsResult.data?.unhandled ?? "—"}
-          description="Flagged reviews not yet resolved"
-          href="/action-needed"
-        />
-      </section>
-    </div>
+      ) : null}
+
+      {presentation.showReviewList ? (
+        <>
+          <DashboardReportList
+            view={params.view}
+            reviews={listResult.reviews}
+            bookings={listResult.bookings}
+            bookingsError={presentation.enrichmentError}
+            params={params}
+            expandedReviewId={expandedReviewId}
+            highRiskConfigured={highRiskConfigured}
+          />
+          <PaginationBar
+            page={listResult.page}
+            pageSize={listResult.pageSize}
+            display={listResult.display}
+            prevHref={hasPrev ? hrefForPage(listResult.page - 1) : undefined}
+            nextHref={hasNext ? hrefForPage(listResult.page + 1) : undefined}
+            resetHref={hrefForPage(DEFAULT_PAGE)}
+            pageSizeHrefs={pageSizeHrefs}
+            showPageReset={showPageReset}
+          />
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+async function DashboardAnalysisSection() {
+  const appTimeZone = getAppTimeZone();
+  const loaded = await loadLastTrendReport();
+  const freshness = computeFreshness({
+    lastSuccessAt: loaded.data?.generatedAt ?? null,
+    now: new Date(),
+    timeZone: appTimeZone,
+  });
+
+  return (
+    <AnalysisOverview
+      report={loaded.data}
+      displayStatus={freshness.status}
+      appTimeZone={appTimeZone}
+    />
   );
 }
