@@ -45,8 +45,28 @@ const INSIGHTS_SCHEMA: Schema = {
         properties: {
           term: { type: Type.STRING },
           meaning: { type: Type.STRING },
+          category: {
+            type: Type.STRING,
+            format: "enum",
+            enum: ["sentiment", "task", "issue", "praise"],
+          },
         },
         required: ["term", "meaning"],
+      },
+    },
+    flagReasonThemes: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          theme: { type: Type.STRING },
+          meaning: { type: Type.STRING },
+          examples: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+          },
+        },
+        required: ["theme", "meaning", "examples"],
       },
     },
     changeSinceLast: {
@@ -82,6 +102,7 @@ const INSIGHTS_SCHEMA: Schema = {
     "sentimentOverallLabel",
     "keywordsExplanation",
     "keywordThemes",
+    "flagReasonThemes",
     "changeSinceLast",
   ],
 };
@@ -134,6 +155,7 @@ function buildPrompt(input: AnalyzeWithGeminiInput): string {
     "If hasPrevious is true, compare new rows and current aggregates against the previous report. Describe new trends, what changed, and the overall trajectory.",
     "If hasPrevious is true and newReviewCount is 0, say there is no new review data since the last run and restate the overall trend.",
     "Keep bullet strings short (one or two sentences).",
+    "Flag reasons: the reason field is free-typed user text, not a closed enum. Do not treat each unique string as its own category. Cluster flagged reasons into a few short themes in flagReasonThemes. Each theme needs a short label (theme), one-sentence meaning, and 1-2 verbatim example phrases copied from the untrusted reason text. Do not invent quotes. Do not invent counts. If there are no flagged reasons, return an empty flagReasonThemes array.",
     "",
     "Current aggregates (source of truth):",
     JSON.stringify(input.aggregates),

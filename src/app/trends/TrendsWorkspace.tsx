@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { BarChart } from "@/components/trends/BarChart";
 import { ChartCard } from "@/components/trends/ChartCard";
+import { FlagReasonThemes } from "@/components/trends/FlagReasonThemes";
 import { GroundingTables } from "@/components/trends/GroundingTables";
 import { InsightsPanel } from "@/components/trends/InsightsPanel";
 import { LineChart } from "@/components/trends/LineChart";
@@ -38,12 +39,18 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function truncateLabel(label: string, max = 16): string {
-  if (label.length <= max) {
-    return label;
-  }
-  return `${label.slice(0, max)}…`;
-}
+const CHART_CAPTIONS = {
+  flaggedReviews:
+    "Count of flagged reviews per month. Taller bars mean more issues reached moderation that month.",
+  flagsByReason:
+    "Flag reasons are free-typed. Similar wording is grouped into themes. Quoted phrases are copied from the original reason text.",
+  averageRating:
+    "Mean star rating by month (1–5). The slope shows whether overall sentiment is improving or worsening.",
+  ratingDistribution:
+    "How many reviews landed on each star. A pile-up at 1★ is a safety/quality signal even when the monthly average looks fine.",
+  keywordCloud:
+    "Words that repeat most in review comments. Larger terms are the more common themes in the text.",
+} as const;
 
 const CHART_CAPTIONS = {
   flaggedReviews:

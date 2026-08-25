@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-status";
 import { createServerClient } from "@/lib/supabase/server";
-import { isGeminiInsights } from "@/lib/trends/insights";
+import { isGeminiInsights, normalizeGeminiInsights } from "@/lib/trends/insights";
 import type { TrendAggregates, TrendReport, TrendWatermark } from "@/lib/trends/types";
 
 export const DEFAULT_TREND_REPORT_PATH = path.join(
@@ -57,6 +57,13 @@ export function isTrendReport(value: unknown): value is TrendReport {
   );
 }
 
+function normalizeTrendReport(report: TrendReport): TrendReport {
+  return {
+    ...report,
+    insights: normalizeGeminiInsights(report.insights),
+  };
+}
+
 async function loadFromFile(filePath: string): Promise<{
   data: TrendReport | null;
   error: string | null;
@@ -71,7 +78,7 @@ async function loadFromFile(filePath: string): Promise<{
         "Failed to load trend report"
       );
     }
-    return queryOk(parsed);
+    return queryOk(normalizeTrendReport(parsed));
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
@@ -159,7 +166,7 @@ async function loadFromSupabaseStorage(): Promise<{
         "Failed to load trend report"
       );
     }
-    return queryOk(parsed);
+    return queryOk(normalizeTrendReport(parsed));
   } catch (error) {
     return queryFail(error, "Failed to load trend report");
   }
