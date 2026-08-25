@@ -4,7 +4,7 @@ import {
   parseReviewsCatalogParams,
   reviewsHref,
 } from "@/lib/reviews/search-params";
-import type { HighRiskCase, HighRiskSeverity, HighRiskType } from "@/lib/trends/types";
+import type { GroundedHighRiskCase, HighRiskSeverity, HighRiskType } from "@/lib/trends/types";
 
 const COMMENT_EXCERPT_LENGTH = 160;
 
@@ -16,7 +16,7 @@ const RISK_TYPE_LABELS: Record<HighRiskType, string> = {
 };
 
 interface HighRiskCasesProps {
-  cases: HighRiskCase[];
+  cases: GroundedHighRiskCase[];
 }
 
 function severityClassName(severity: HighRiskSeverity): string {
@@ -26,7 +26,7 @@ function severityClassName(severity: HighRiskSeverity): string {
   return "bg-amber-500 text-white";
 }
 
-function caseHref(item: HighRiskCase): string {
+function caseHref(item: GroundedHighRiskCase): string {
   if (item.flag && !item.handled) {
     return `/action-needed/${item.reviewId}`;
   }
