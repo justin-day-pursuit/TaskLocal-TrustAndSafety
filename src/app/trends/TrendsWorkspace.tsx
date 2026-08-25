@@ -117,8 +117,9 @@ export function TrendsWorkspace({
           <h2 className="text-2xl font-semibold text-zinc-900">Trends</h2>
           <p className="mt-1 text-sm text-zinc-500">
             On-demand Gemini analysis. Review IDs and booking keys are removed
-            first. Comments and flag reasons are sent to Google and may contain
-            personal details.
+            first. Direct identifiers (emails, phone numbers, links) are removed
+            before analysis. Remaining comments and flag reasons are sent to
+            Google.
           </p>
           {report ? (
             <p className="mt-2 text-xs text-zinc-500">
