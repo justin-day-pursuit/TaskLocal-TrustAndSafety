@@ -140,6 +140,9 @@ export function ReviewsCatalogControls({
   function clearFilters() {
     startTransition(() => {
       navigate(router, params, {
+        qText: undefined,
+        qReview: undefined,
+        qBooking: undefined,
         reviewerRole: "all",
         report: "all",
         handled: "all",
