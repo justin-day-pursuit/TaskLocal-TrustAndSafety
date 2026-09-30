@@ -68,8 +68,9 @@ describe("POST /api/reviews/[id]/resolve", () => {
       data: { id: "rev_abc", handled: true },
       error: null,
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/action-needed");
-    expect(revalidatePath).toHaveBeenCalledWith("/action-needed/rev_abc");
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+    expect(revalidatePath).toHaveBeenCalledWith("/reviews");
+    expect(revalidatePath).toHaveBeenCalledWith("/analysis");
   });
 
   it("returns 400 for a blank id", async () => {

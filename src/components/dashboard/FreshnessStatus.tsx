@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { generateTrendsReportAction } from "@/app/trends/actions";
+import { generateAnalysisReportAction } from "@/app/analysis/actions";
 import {
   QueryCallStatus,
   QueryFailureStatus,
@@ -105,7 +105,7 @@ export function FreshnessStatus({
     setIsGenerating(true);
 
     try {
-      const result = await generateTrendsReportAction();
+      const result = await generateAnalysisReportAction();
       if (result.error || !result.data) {
         setError(result.error ?? "Failed to generate the analysis report.");
         setFailureKind(result.failureKind ?? "error");

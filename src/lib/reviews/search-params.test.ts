@@ -300,28 +300,28 @@ describe("action-needed list params", () => {
 });
 
 describe("buildActionNeededHref", () => {
-  it("returns bare path when params are defaults", () => {
+  it("returns dashboard unhandled view when params are defaults", () => {
     expect(
       buildActionNeededHref(parseActionNeededListParams({}))
-    ).toBe("/action-needed");
+    ).toBe("/?view=unhandled");
   });
 
-  it("preserves role and page in the list redirectTo path", () => {
+  it("preserves role and page on the dashboard unhandled path", () => {
     expect(
       buildActionNeededHref(
         parseActionNeededListParams({ role: "customer", page: "2" })
       )
-    ).toBe("/action-needed?role=customer&page=2");
+    ).toBe("/?view=unhandled&role=customer&page=2");
   });
 });
 
 describe("buildActionNeededDetailHref", () => {
-  it("carries list search params on the detail URL", () => {
+  it("carries list search params on the dashboard expanded URL", () => {
     expect(
       buildActionNeededDetailHref(
         "rev_abc",
         parseActionNeededListParams({ role: "customer", page: "2" })
       )
-    ).toBe("/action-needed/rev_abc?role=customer&page=2");
+    ).toBe("/?view=unhandled&role=customer&page=2&expanded=rev_abc");
   });
 });

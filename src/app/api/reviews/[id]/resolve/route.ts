@@ -8,13 +8,10 @@ import { resolveReview } from "@/lib/queries/reviews";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-function revalidateReviewPaths(reviewId: string) {
+function revalidateReviewPaths() {
   revalidatePath("/");
-  revalidatePath("/action-needed");
-  revalidatePath(`/action-needed/${reviewId}`);
   revalidatePath("/reviews");
-  revalidatePath("/flagged");
-  revalidatePath(`/flagged/${reviewId}`);
+  revalidatePath("/analysis");
 }
 
 export async function POST(
@@ -52,6 +49,6 @@ export async function POST(
     );
   }
 
-  revalidateReviewPaths(reviewId);
+  revalidateReviewPaths();
   return NextResponse.json({ data, error: null });
 }
