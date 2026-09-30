@@ -77,12 +77,12 @@ export function InsightsPanel({ insights, showChange }: InsightsPanelProps) {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-tl-text">
-                Emerging trends
+                Emerging patterns
               </h4>
               <div className="mt-2">
                 <BulletList
                   items={insights.changeSinceLast.emergingTrends}
-                  empty="No emerging trends described."
+                  empty="No emerging patterns described."
                 />
               </div>
             </div>

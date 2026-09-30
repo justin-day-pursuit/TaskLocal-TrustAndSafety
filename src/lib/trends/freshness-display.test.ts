@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatLastSuccessAt,
   freshnessStatusLabel,
+  hasHighRiskCase,
   staleAnalysisMessage,
 } from "@/lib/trends/freshness-display";
 import { computeFreshness } from "@/lib/trends/freshness";
@@ -19,6 +20,11 @@ describe("freshnessStatusLabel", () => {
 describe("formatLastSuccessAt", () => {
   it("returns null when no timestamp exists", () => {
     expect(formatLastSuccessAt(null, "UTC")).toBeNull();
+  });
+
+  it("formats in the configured timezone", () => {
+    const formatted = formatLastSuccessAt("2026-01-15T14:30:00.000Z", "UTC");
+    expect(formatted).toMatch(/Jan 15, 2026/);
   });
 });
 
@@ -40,5 +46,23 @@ describe("freshness parity with U1 computeFreshness", () => {
 
     expect(freshnessStatusLabel(persisted.status)).toBe("Analysis due");
     expect(persisted.isStale).toBe(true);
+  });
+});
+
+describe("hasHighRiskCase", () => {
+  it("detects a present high-risk case", () => {
+    expect(
+      hasHighRiskCase({
+        title: "Safety concern",
+        summary: "Repeated unsafe behavior",
+        rationale: "Multiple reports mention harm.",
+        searchTerms: ["unsafe"],
+      })
+    ).toBe(true);
+  });
+
+  it("returns false for null", () => {
+    expect(hasHighRiskCase(null)).toBe(false);
+    expect(hasHighRiskCase(undefined)).toBe(false);
   });
 });

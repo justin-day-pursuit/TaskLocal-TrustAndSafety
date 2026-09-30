@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { buildIlikeOrFilter } from "@/lib/postgrest/ilike-or-filter";
 import {
   buildActionNeededDetailHref,
   buildActionNeededHref,
@@ -15,15 +16,15 @@ describe("parseReviewsCatalogParams", () => {
   it("applies documented defaults for an empty query", () => {
     expect(parseReviewsCatalogParams({})).toEqual({
       reviewerRole: "all",
-      flag: "all",
+      report: "all",
       handled: "all",
-      bookingStatus: "all",
       sort: "createdAt",
       dir: "desc",
       createdWithin: "all",
       createdMonth: undefined,
       page: 1,
       pageSize: 25,
+      qText: undefined,
       qReview: undefined,
       qBooking: undefined,
       expanded: undefined,
@@ -33,12 +34,12 @@ describe("parseReviewsCatalogParams", () => {
   it("parses every PRD §7 param", () => {
     expect(
       parseReviewsCatalogParams({
+        qText: " rude ",
         qReview: " rev_abc ",
         qBooking: " bkg_1 ",
         reviewerRole: "customer",
-        flag: "true",
+        report: "true",
         handled: "false",
-        bookingStatus: "completed",
         sort: "priceAtBooking",
         dir: "asc",
         createdWithin: "week",
@@ -48,12 +49,12 @@ describe("parseReviewsCatalogParams", () => {
         expanded: "rev_open",
       })
     ).toEqual({
+      qText: "rude",
       qReview: "rev_abc",
       qBooking: "bkg_1",
       reviewerRole: "customer",
-      flag: "true",
+      report: "true",
       handled: "false",
-      bookingStatus: "completed",
       sort: "priceAtBooking",
       dir: "asc",
       createdWithin: "week",
@@ -64,13 +65,43 @@ describe("parseReviewsCatalogParams", () => {
     });
   });
 
+  it("canonicalizes legacy flag to report", () => {
+    expect(parseReviewsCatalogParams({ flag: "true" })).toMatchObject({
+      report: "true",
+    });
+    expect(serializeReviewsCatalogParams(parseReviewsCatalogParams({ flag: "true" }))).toBe(
+      "report=true"
+    );
+  });
+
+  it("prefers report over legacy flag when both are present", () => {
+    expect(
+      parseReviewsCatalogParams({ flag: "true", report: "false" })
+    ).toMatchObject({
+      report: "false",
+    });
+  });
+
+  it("ignores removed bookingStatus param", () => {
+    const parsed = parseReviewsCatalogParams({ bookingStatus: "completed" });
+    expect(parsed).not.toHaveProperty("bookingStatus");
+    expect(serializeReviewsCatalogParams(parsed)).not.toContain("bookingStatus");
+  });
+
+  it("ignores unknown params", () => {
+    expect(
+      parseReviewsCatalogParams({ unknownParam: "x", report: "true" })
+    ).toMatchObject({
+      report: "true",
+    });
+  });
+
   it("falls back to defaults for invalid values", () => {
     expect(
       parseReviewsCatalogParams({
         reviewerRole: "admin",
-        flag: "maybe",
+        report: "maybe",
         handled: "nope",
-        bookingStatus: "pending",
         sort: "comment",
         dir: "sideways",
         createdWithin: "decade",
@@ -80,9 +111,8 @@ describe("parseReviewsCatalogParams", () => {
       })
     ).toMatchObject({
       reviewerRole: "all",
-      flag: "all",
+      report: "all",
       handled: "all",
-      bookingStatus: "all",
       sort: "createdAt",
       dir: "desc",
       createdWithin: "all",
@@ -92,11 +122,11 @@ describe("parseReviewsCatalogParams", () => {
     });
   });
 
-  it("strips handled when flag is not flagged", () => {
+  it("strips handled when report is not reported", () => {
     expect(
-      parseReviewsCatalogParams({ flag: "false", handled: "true" })
+      parseReviewsCatalogParams({ report: "false", handled: "true" })
     ).toMatchObject({
-      flag: "false",
+      report: "false",
       handled: "all",
     });
   });
@@ -107,10 +137,18 @@ describe("serializeReviewsCatalogParams", () => {
     expect(serializeReviewsCatalogParams(parseReviewsCatalogParams({}))).toBe("");
   });
 
+  it("round-trips qText", () => {
+    const parsed = parseReviewsCatalogParams({ qText: "unsafe language" });
+    const roundTrip = parseReviewsCatalogParams(
+      Object.fromEntries(new URLSearchParams(serializeReviewsCatalogParams(parsed)))
+    );
+    expect(roundTrip.qText).toBe("unsafe language");
+  });
+
   it("round-trips stable for non-default params", () => {
     const parsed = parseReviewsCatalogParams({
       qReview: "rev",
-      flag: "true",
+      report: "true",
       sort: "rating",
       dir: "asc",
       createdWithin: "month",
@@ -129,12 +167,12 @@ describe("serializeReviewsCatalogParams", () => {
 
   it("round-trips every PRD §7 param including booking-side filters", () => {
     const parsed = parseReviewsCatalogParams({
+      qText: "issue",
       qReview: "rev_abc",
       qBooking: "bkg_1",
       reviewerRole: "provider",
-      flag: "false",
+      report: "false",
       handled: "true",
-      bookingStatus: "confirmed",
       sort: "serviceDate",
       dir: "asc",
       createdWithin: "year",
@@ -153,24 +191,32 @@ describe("serializeReviewsCatalogParams", () => {
     expect(roundTrip).toEqual(parsed);
   });
 
-  it("omits handled from the query string when flag is not flagged", () => {
+  it("omits handled from the query string when report is not reported", () => {
     const parsed = parseReviewsCatalogParams({
-      flag: "false",
+      report: "false",
       handled: "true",
     });
 
-    expect(serializeReviewsCatalogParams(parsed)).toBe("flag=false");
+    expect(serializeReviewsCatalogParams(parsed)).toBe("report=false");
   });
 });
 
 describe("mergeReviewsCatalogParams", () => {
   it("resets page to 1 when a filter changes", () => {
-    const current = parseReviewsCatalogParams({ page: "4", flag: "true" });
+    const current = parseReviewsCatalogParams({ page: "4", report: "true" });
     const next = mergeReviewsCatalogParams(current, { handled: "false" });
 
     expect(next.page).toBe(1);
-    expect(next.flag).toBe("true");
+    expect(next.report).toBe("true");
     expect(next.handled).toBe("false");
+  });
+
+  it("resets page to 1 when qText changes", () => {
+    const current = parseReviewsCatalogParams({ page: "4" });
+    const next = mergeReviewsCatalogParams(current, { qText: "spam" });
+
+    expect(next.page).toBe(1);
+    expect(next.qText).toBe("spam");
   });
 
   it("keeps page when only pagination fields change", () => {
@@ -181,15 +227,23 @@ describe("mergeReviewsCatalogParams", () => {
     expect(next.pageSize).toBe(50);
   });
 
-  it("resets handled to all when flag becomes not flagged", () => {
+  it("does not reset page when only expanded toggles", () => {
+    const current = parseReviewsCatalogParams({ page: "4" });
+    const next = mergeReviewsCatalogParams(current, { expanded: "rev_1" });
+
+    expect(next.page).toBe(4);
+    expect(next.expanded).toBe("rev_1");
+  });
+
+  it("resets handled to all when report becomes not reported", () => {
     const current = parseReviewsCatalogParams({
-      flag: "true",
+      report: "true",
       handled: "true",
       page: "3",
     });
-    const next = mergeReviewsCatalogParams(current, { flag: "false" });
+    const next = mergeReviewsCatalogParams(current, { report: "false" });
 
-    expect(next.flag).toBe("false");
+    expect(next.report).toBe("false");
     expect(next.handled).toBe("all");
     expect(next.page).toBe(1);
   });
@@ -201,19 +255,28 @@ describe("requiresBookingFirstQuery", () => {
       true
     );
     expect(
-      requiresBookingFirstQuery(parseReviewsCatalogParams({ bookingStatus: "requested" }))
-    ).toBe(true);
-    expect(
       requiresBookingFirstQuery(parseReviewsCatalogParams({ sort: "serviceDate" }))
     ).toBe(true);
   });
 
-  it("is false for review-only controls", () => {
+  it("is false for removed bookingStatus and review-only controls", () => {
+    expect(
+      requiresBookingFirstQuery(parseReviewsCatalogParams({ bookingStatus: "requested" }))
+    ).toBe(false);
     expect(
       requiresBookingFirstQuery(
-        parseReviewsCatalogParams({ qReview: "rev", flag: "true", sort: "rating" })
+        parseReviewsCatalogParams({ qText: "issue", qReview: "rev", report: "true", sort: "rating" })
       )
     ).toBe(false);
+  });
+});
+
+describe("review catalog qText filter", () => {
+  it("builds escaped .or() on comment/reason", () => {
+    const filter = buildIlikeOrFilter(["comment", "reason"], "foo%bar");
+    expect(filter).toBe(
+      'comment.ilike."%foo\\%bar%",reason.ilike."%foo\\%bar%"'
+    );
   });
 });
 

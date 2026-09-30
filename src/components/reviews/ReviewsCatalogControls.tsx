@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent, type TransitionStartFunction } from "react";
 
-import { BOOKING_STATUSES, REVIEWER_ROLES } from "@/lib/constants/enums";
+import { REVIEWER_ROLES } from "@/lib/constants/enums";
 import {
   CREATED_WITHIN_OPTIONS,
   DEFAULT_DIR,
@@ -56,13 +56,11 @@ const CREATED_WITHIN_LABELS: Record<
   year: "Last 365 days",
 };
 
-const BOOKING_STATUS_LABELS: Record<(typeof BOOKING_STATUSES)[number], string> =
-  {
-    requested: "Requested",
-    confirmed: "Confirmed",
-    completed: "Completed",
-    cancelled: "Cancelled",
-  };
+const controlClassName =
+  "mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900";
+
+const inputClassName =
+  "min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900";
 
 function CatalogSearchForm({
   inputName,
@@ -88,7 +86,7 @@ function CatalogSearchForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-1">
-      <label className="block text-xs font-medium text-zinc-600" htmlFor={inputName}>
+      <label className="block text-sm font-medium text-zinc-700" htmlFor={inputName}>
         {label}
       </label>
       <div className="flex gap-2">
@@ -99,11 +97,11 @@ function CatalogSearchForm({
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900"
+          className={inputClassName}
         />
         <button
           type="submit"
-          className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+          className="shrink-0 rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
         >
           {submitLabel}
         </button>
@@ -127,6 +125,10 @@ export function ReviewsCatalogControls({
     });
   }
 
+  function handleTextSearch(trimmed: string) {
+    pushUpdates({ qText: trimmed || undefined });
+  }
+
   function handleReviewSearch(trimmed: string) {
     pushUpdates({ qReview: trimmed || undefined });
   }
@@ -138,10 +140,12 @@ export function ReviewsCatalogControls({
   function clearFilters() {
     startTransition(() => {
       navigate(router, params, {
+        qText: undefined,
+        qReview: undefined,
+        qBooking: undefined,
         reviewerRole: "all",
-        flag: "all",
+        report: "all",
         handled: "all",
-        bookingStatus: "all",
         sort: DEFAULT_SORT,
         dir: DEFAULT_DIR,
         createdWithin: "all",
@@ -152,14 +156,14 @@ export function ReviewsCatalogControls({
     });
   }
 
-  const handledAvailable = params.flag !== "false";
+  const resolutionAvailable = params.report !== "false";
   const hasActiveFilters =
+    Boolean(params.qText) ||
     Boolean(params.qReview) ||
     Boolean(params.qBooking) ||
     params.reviewerRole !== "all" ||
-    params.flag !== "all" ||
-    (handledAvailable && params.handled !== "all") ||
-    params.bookingStatus !== "all" ||
+    params.report !== "all" ||
+    (resolutionAvailable && params.handled !== "all") ||
     params.sort !== DEFAULT_SORT ||
     params.dir !== DEFAULT_DIR ||
     params.createdWithin !== "all" ||
@@ -169,8 +173,8 @@ export function ReviewsCatalogControls({
     <div className="space-y-3 rounded-lg border border-zinc-200 bg-white p-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h3 className="text-sm font-medium text-zinc-900">Search & filters</h3>
-          <p className="mt-0.5 text-xs text-zinc-500">
+          <h3 className="text-base font-medium text-zinc-900">Search & filters</h3>
+          <p className="mt-0.5 text-sm text-zinc-600">
             All controls combine with AND. Changing a filter resets to page 1.
           </p>
         </div>
@@ -178,12 +182,22 @@ export function ReviewsCatalogControls({
           <button
             type="button"
             onClick={clearFilters}
-            className="text-sm font-medium text-zinc-700 underline-offset-2 hover:underline"
+            className="text-sm font-medium text-zinc-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
           >
             Clear all filters
           </button>
         ) : null}
       </div>
+
+      <CatalogSearchForm
+        key={`qText:${params.qText ?? ""}`}
+        inputName="qText"
+        label="Search review text"
+        placeholder="Comment or report reason"
+        submitLabel="Search text"
+        initialValue={params.qText ?? ""}
+        onSearch={handleTextSearch}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <CatalogSearchForm
@@ -207,8 +221,8 @@ export function ReviewsCatalogControls({
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block text-xs font-medium text-zinc-600">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="block text-sm font-medium text-zinc-700">
           Reviewer role
           <select
             value={params.reviewerRole}
@@ -217,7 +231,7 @@ export function ReviewsCatalogControls({
                 reviewerRole: event.target.value as ReviewsCatalogParams["reviewerRole"],
               })
             }
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+            className={controlClassName}
           >
             <option value="all">All</option>
             {REVIEWER_ROLES.map((role) => (
@@ -228,26 +242,26 @@ export function ReviewsCatalogControls({
           </select>
         </label>
 
-        <label className="block text-xs font-medium text-zinc-600">
-          Flag
+        <label className="block text-sm font-medium text-zinc-700">
+          Report status
           <select
-            value={params.flag}
+            value={params.report}
             onChange={(event) =>
               pushUpdates({
-                flag: event.target.value as ReviewsCatalogParams["flag"],
+                report: event.target.value as ReviewsCatalogParams["report"],
               })
             }
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+            className={controlClassName}
           >
             <option value="all">All</option>
-            <option value="true">Flagged</option>
-            <option value="false">Not flagged</option>
+            <option value="true">Reported</option>
+            <option value="false">Not reported</option>
           </select>
         </label>
 
-        {handledAvailable ? (
-          <label className="block text-xs font-medium text-zinc-600">
-            Handled
+        {resolutionAvailable ? (
+          <label className="block text-sm font-medium text-zinc-700">
+            Resolution status
             <select
               value={params.handled}
               onChange={(event) =>
@@ -255,46 +269,25 @@ export function ReviewsCatalogControls({
                   handled: event.target.value as ReviewsCatalogParams["handled"],
                 })
               }
-              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+              className={controlClassName}
             >
               <option value="all">All</option>
-              <option value="true">Handled</option>
               <option value="false">Unhandled</option>
+              <option value="true">Resolved</option>
             </select>
           </label>
         ) : null}
-
-        <label className="block text-xs font-medium text-zinc-600">
-          Booking status
-          <select
-            value={params.bookingStatus}
-            onChange={(event) =>
-              pushUpdates({
-                bookingStatus:
-                  event.target.value as ReviewsCatalogParams["bookingStatus"],
-              })
-            }
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
-          >
-            <option value="all">All</option>
-            {BOOKING_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {BOOKING_STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block text-xs font-medium text-zinc-600">
+        <label className="block text-sm font-medium text-zinc-700">
           Sort by
           <select
             value={params.sort}
             onChange={(event) =>
               pushUpdates({ sort: event.target.value as ReviewSortField })
             }
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+            className={controlClassName}
           >
             {SORT_FIELDS.map((field) => (
               <option key={field} value={field}>
@@ -304,21 +297,21 @@ export function ReviewsCatalogControls({
           </select>
         </label>
 
-        <label className="block text-xs font-medium text-zinc-600">
+        <label className="block text-sm font-medium text-zinc-700">
           Direction
           <select
             value={params.dir}
             onChange={(event) =>
               pushUpdates({ dir: event.target.value as SortDirection })
             }
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+            className={controlClassName}
           >
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>
           </select>
         </label>
 
-        <label className="block text-xs font-medium text-zinc-600">
+        <label className="block text-sm font-medium text-zinc-700">
           Created within
           <select
             value={params.createdWithin}
@@ -328,7 +321,7 @@ export function ReviewsCatalogControls({
                   event.target.value as ReviewsCatalogParams["createdWithin"],
               })
             }
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+            className={controlClassName}
           >
             {CREATED_WITHIN_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -338,7 +331,7 @@ export function ReviewsCatalogControls({
           </select>
         </label>
 
-        <label className="block text-xs font-medium text-zinc-600">
+        <label className="block text-sm font-medium text-zinc-700">
           Created month (UTC)
           <select
             value={params.createdMonth ?? ""}
@@ -348,7 +341,7 @@ export function ReviewsCatalogControls({
                 createdMonth: raw ? Number.parseInt(raw, 10) : undefined,
               });
             }}
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm"
+            className={controlClassName}
           >
             <option value="">Any month</option>
             {Array.from({ length: 12 }, (_, index) => index + 1).map(

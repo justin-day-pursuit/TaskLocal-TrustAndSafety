@@ -85,8 +85,8 @@ export function GroundingTables({
       </div>
 
       <Table
-        caption="Monthly review and flag counts"
-        headers={["Month", "Reviews", "Flagged", "Flag rate"]}
+        caption="Monthly review and report counts"
+        headers={["Month", "Reviews", "Reported", "Report rate"]}
       >
         {monthlyFlags.length === 0 ? (
           <tr>
@@ -108,11 +108,11 @@ export function GroundingTables({
         )}
       </Table>
 
-      <Table caption="Top flag reasons" headers={["Reason", "Count"]}>
+      <Table caption="Top report reasons" headers={["Reason", "Count"]}>
         {topReasons.length === 0 ? (
           <tr>
             <td className="px-4 py-3 text-tl-muted" colSpan={2}>
-              No flagged reasons.
+              No report reasons.
             </td>
           </tr>
         ) : (
@@ -148,7 +148,7 @@ export function GroundingTables({
           "Reviewer",
           "Rating",
           "Comment",
-          "Flag",
+          "Report",
           "Reason",
           "Created",
           "Service date",
