@@ -1,380 +1,273 @@
-# Product D — Reviews Console PRD
+# Product D — Daily Reviewer Dashboard PRD
 
-**Status:** shipped on `main` via [#8](https://github.com/justin-day-pursuit/TaskLocal-TrustAndSafety/pull/8) (`1f8ea69`). T1–T9 implemented. Planner close-gate was PASS-WITH-GAPS (live in-browser smoke unproven).  
-**Date:** 2026-08-20  
-**Owner surface:** TaskLocal Trust & Safety (this repo only)  
-**Companion visual:** `.cursor/project-snapshot.canvas.tsx` (project context + this task list)
+**Status:** implemented on `feat/dashboard-integration` @ `35c3289`; not merged to `origin/main`. Planner close-gate **PASS-WITH-GAPS** (live Playwright / Gemini / visual §4 a11y UNPROVEN). Do not treat this slice as live on main.
+**Date:** 2026-08-25
+**Owner surface:** TaskLocal Trust & Safety
+**Source of truth:** this document plus committed source; no chat history is required.
 
-This document is the source of truth for the next implementation slice. Another agent should be able to implement from this file + the committed source without chat history.
+**Implementation outcome:** Verified on `feat/dashboard-integration` @ `35c3289` (U1–U10). Green gate: 35 files / 225 tests, lint 0, build 0. `origin/main` still carries the 2026-08-20 Reviews Console PRD and Action-needed / `/trends` UI. Residual gaps (not fails): live in-browser / Playwright smoke, live Gemini, visual §4 a11y, and live-DB count-parity.
 
----
+## 1. Product goal
 
-## Read this first
+Refactor the app into a high-clarity workspace for an internal reviewer who visits daily to:
 
-| If you need… | Read |
+1. see whether the latest analysis is current;
+2. identify and resolve reports requiring action;
+3. understand intake volume, high-risk cases, issue trends, and sentiment;
+4. search all reviews by the language in comments and report reasons.
+
+The dashboard is the primary work surface. It combines action queues and an executive overview; the full Reviews catalog and Analysis workspace remain supporting pages.
+
+## 2. Locked terminology and navigation
+
+User-facing copy must use:
+
+| Internal/current term | User-facing term |
 |---|---|
-| Product + setup | `README.md` |
-| This slice (tasks, URL contract, acceptance) | **this file** |
-| Domain types | `src/lib/types/database.ts` |
-| Enums | `src/lib/constants/enums.ts` |
-| Current queue/detail/resolve | `src/app/action-needed/**`, `src/lib/queries/reviews.ts` |
-| Visual project context | `.cursor/project-snapshot.canvas.tsx` |
+| `flag`, flagged review | **report**, **reported review** |
+| Flagged Reviews | **Reports** |
+| Unhandled Flags | **Unhandled reports** |
+| Trends, trend report | **Analysis**, **analysis report** |
+| Generate/Regenerate trend report | **Generate/Regenerate analysis** |
 
-**What this app is:** internal moderation dashboard (Product D). It reads/writes a **shared** Supabase Postgres DB also used by Products A/B/C (other repos). Flag **creation** happens upstream. This app triages and marks `Review.handled = true`.
+Database fields, server types, and internal query names may remain `flag` to avoid a schema migration. Never expose “flag” or “trend” as current product terminology.
 
-**What this app is not:** marketplace, chatbot, ban system, policy engine, or auth product.
+Primary navigation, in order:
 
----
+1. **Dashboard** — `/`
+2. **Reviews** — `/reviews`
+3. **Analysis** — `/analysis`
 
-## 1. Current state (do not regress)
+Remove **Action needed** from navigation and retire it as a standalone work page. Its report-list and Resolve workflows move to dashboard drill-downs.
 
-Already shipped on `main` (Reviews Console squash [#8](https://github.com/justin-day-pursuit/TaskLocal-TrustAndSafety/pull/8)):
+Compatibility redirects:
 
-- `/` dashboard: total / flagged / unhandled counts + connection badge; cards link to `/reviews`, `/reviews?flag=true`, `/action-needed`.
-- `/action-needed`: open flags (`flag=true`, `handled=false`), oldest-first, role tabs, repeat-flag badges, inline Resolve, expand rows, pagination. `/flagged` and `/flagged/:id` 308-redirect here.
-- `/action-needed/[id]`: Review → Booking → Listing detail + Resolve (returns to the queue URL including query params).
-- Resolve: `src/app/action-needed/actions.ts` → `resolveReview()` sets `handled=true` only. List/panel keep the current query string.
-- `/reviews`: all-reviews catalog (search/filter/sort/dates/pagination + expand). Not an NLP page.
-- `/trends`: on-demand Gemini analytics (charts, insights, persist). Not a placeholder.
-- Request states: loading spinner + description, error, and timeout on database/API calls. Success is the data. DB calls abort after 10s; Gemini after 90s. Booking enrichment failure/timeout still shows the review list (T7).
-- Tests: `npm test` — Vitest, offline (no live Supabase required).
+- `/trends` and its query string → `/analysis`
+- `/action-needed` → `/?view=unhandled`
+- `/flagged` → `/?view=unhandled`
+- `/action-needed/:id` and `/flagged/:id` → `/?view=unhandled&expanded=:id`
 
-Hard rules that stay:
+Redirects must not create duplicate implementations.
 
-- Do **not** create, alter, or drop tables.
-- Use the service role key **only** on the Next.js server (`SUPABASE_SERVICE_ROLE_KEY`, never `NEXT_PUBLIC_` / `VITE_`). Required for Customer / Booking / Review after `005_enable_authenticated_rls.sql`. Never ship it to the browser.
-- Table names are capitalized: `Provider`, `Listing`, `Customer`, `Booking`, `Review`.
-- Enums are plain text in the DB; validate in app code (`src/lib/constants/enums.ts`).
-- Resolve stays binary (`handled = true`). No dispositions, notes, or audit trail in this slice.
+## 3. Platform constraints
 
----
+- Do not create, alter, or drop database tables.
+- Shared tables remain capitalized: `Provider`, `Listing`, `Customer`, `Booking`, `Review`.
+- Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Never expose it through a `NEXT_PUBLIC_`/`VITE_` variable or client bundle.
+- Resolution remains binary: Resolve sets `Review.handled = true`. No disposition, note, policy action, or audit trail is added.
+- Analysis input remains stripped of unique identifiers and has free text redacted before it is sent to the model.
+- Database calls retain a 10-second timeout; analysis generation retains a 90-second timeout.
+- Existing review and booking data must remain visible when booking enrichment fails.
 
-## 2. Goal of this slice
+## 4. Visual and accessibility requirements
 
-Give moderators a **full review catalog** they can search/filter/sort, keep a dedicated **work queue** for unhandled flags, make dashboard stats jump to the right list, and let a row click **expand** review + booking data without leaving the list. Add pagination and a real test harness. Fix two known queue bugs.
+The redesign must increase legibility and make required action obvious:
 
----
+- Use a base body size of at least `16px`; primary page titles at least `30px`; card values at least `28px`; controls and metadata at least `14px`.
+- Text, controls, borders, cards, selected states, and page background must meet WCAG 2.1 AA contrast. Body text requires 4.5:1; large text and meaningful UI boundaries require 3:1.
+- Use consistent icons for freshness, warning/high risk, reports, unresolved work, and Resolve. Every icon must have adjacent visible text or an accessible name.
+- Stale, high-risk, unresolved, error, and selected states must never rely on color alone. Pair color with an icon and explicit status text.
+- Pages/cards requiring attention show a visible signal in navigation or on the relevant card. Decorative icons must be hidden from assistive technology.
+- All cards and controls are keyboard-accessible, have visible focus states, and use semantic buttons/links.
+- Prefer high-contrast surfaces and clear section boundaries over low-contrast gray-on-gray panels.
 
-## 3. Naming decision (locked)
+## 5. Dashboard (`/`)
 
-| Old | New | Why |
+Render sections in this exact order.
+
+### 5.1 Analysis freshness and generation
+
+The first dashboard control is **Generate analysis** when no report exists and **Regenerate analysis** afterward.
+
+Show next to it:
+
+- freshness icon and text: **Current**, **Analysis due**, **Generating**, or **Generation failed**;
+- the last successful generation timestamp in the configured app timezone;
+- when stale, the message “Analysis has not been generated since today’s review cutoff.”
+
+Freshness is calendar-cutoff based, not a rolling 24-hour timer:
+
+- Configure an IANA timezone as `APP_TIME_ZONE`; default to `UTC` if unset or invalid.
+- The daily cutoff is **9:00 AM** in that timezone.
+- At or after 9:00 AM, the latest acceptable generation time is today at 9:00 AM.
+- Before 9:00 AM, the latest acceptable generation time is yesterday at 9:00 AM.
+- The analysis is stale if it has never succeeded or its saved generation time is earlier than the latest cutoff.
+- A failed regeneration does not replace the last successful report and does not make stale data current.
+- Stale state shows a warning signal on the dashboard and Analysis nav/page. Current state shows a positive signal without implying that underlying source data is live.
+
+Clicking Generate/Regenerate runs the existing analysis pipeline, persists the result, refreshes all analysis-backed dashboard content, and reports loading/error/timeout states without blanking the last successful report.
+
+### 5.2 Action cards
+
+Display exactly three cards, in this order:
+
+| Card | Count and filter | Signal |
 |---|---|---|
-| Nav “Flagged Reviews” `/flagged` | **Action needed** `/action-needed` | This page is the **work queue** of unhandled flags. “Flag resolution” sounds like a completed-work archive. “Flagged reviews” collides with the catalog filter `flag=true` (which includes already-handled flags). |
-| Nav “Review Themes” `/reviews` | **Reviews** `/reviews` | Becomes the catalog of **all** reviews. NLP/themes stay parked (not on this route). |
+| **New reports today** | `flag=true` and `createdAt` within the current calendar day in `APP_TIME_ZONE` | Reports icon; attention signal when count > 0 |
+| **Total unhandled reports** | `flag=true AND handled=false` | Unresolved icon; attention signal when count > 0 |
+| **High-risk case** | Reported rows matching the latest high-risk analysis terms; count is the number of matching rows | High-risk warning when matches exist; stale warning when analysis is stale |
 
-Dashboard labels stay:
+Each card is a semantic button. Selecting it:
 
-- **Total Reviews** → `/reviews`
-- **Flagged Reviews** → `/reviews?flag=true` (catalog, flagged, including handled)
-- **Unhandled Flags** → `/action-needed` (queue, `flag=true` and `handled=false`)
+- sets the selected state and updates `view` in the URL;
+- opens one shared list container immediately below all three cards;
+- applies only that card’s locked filter plus the list’s optional text/role filters;
+- does not navigate away or stack multiple lists;
+- toggles closed when the selected card is clicked again.
 
-Keep old URLs working:
+The list is newest-first, paginated at 25 rows by default, and shows Review data with expandable Booking context. Each row displays reported/resolved status using product terminology. Reported, unhandled rows provide **Resolve** in the row and expanded panel. After success, refresh counts and lists; remove the row if it no longer matches the active filter. Preserve selected view, search, role, page, and expansion state where still valid.
 
-- `/flagged` → `/action-needed`
-- `/flagged/:id` → `/action-needed/:id`
+Empty states must explain the active filter. Booking load errors show a banner but do not hide Review rows.
 
-Use Next.js redirects (`next.config.ts`) rather than leaving a duplicate page.
+### 5.3 Analysis overview
 
-Nav active state: `/action-needed/[id]` must highlight **Action needed** (`pathname.startsWith(href + "/")`, but not for `/`).
+Below the action-card list, show these sections from the latest successful analysis:
 
----
+1. **Executive brief** — concise current business health, including what is going well, what needs attention, and recommended actions.
+2. **Changes since last report** — material changes since the prior comparable analysis; show an explicit first-report state when no comparison exists.
+3. **Issue trends** — noticed report reasons/themes, direction, and material concentration.
+4. **Sentiment trends** — changes in rating/sentiment, notable language themes, and direction.
 
-## 4. Locked scope
+Show the analysis timestamp and stale/current status with this overview. Never present stale analysis as current. If no analysis exists, render a compact prompt to Generate analysis instead of empty insight cards.
 
-### In this slice (must ship)
+## 6. High-risk analysis and report matching
 
-| ID | Task |
-|---|---|
-| **T1** | Rename flagged queue → Action needed; redirects; nav copy |
-| **T2** | All-reviews list at `/reviews` (replace NLP placeholder) |
-| **T3** | Search / filter / sort / date granularity on `/reviews` |
-| **T4** | Click-to-expand row: structured Review + Booking (both lists) |
-| **T5** | Dashboard stat cards are links (see §3) |
-| **T6** | Pagination on `/reviews` and `/action-needed` |
-| **T7** | Booking fetch error must **not** hide the review list |
-| **T8** | Preserve query string after Resolve (role filter, page, etc.) |
-| **T9** | Automated tests + `npm test` |
+The generated analysis must include one nullable `highRiskCase` object:
 
-### Parking lot (do not implement now)
+```ts
+type HighRiskCase = {
+  title: string;
+  summary: string;
+  rationale: string;
+  searchTerms: string[]; // redacted words or short phrases only
+} | null;
+```
 
-- Staff login / RBAC (dashboard uses server-only service role after shared RLS; no staff role in the shared migration)
-- Non-binary resolve (dismiss vs uphold, notes, actor)
-- Unused scaffold cleanup (`DataTable`, `generateId`, `createBrowserClient`, `getListingsByIds`)
-- Fetching Provider/Customer **names** (IDs on booking are enough this slice)
-- NLP / review themes
-- CI workflows
-- Bans, cases, policy engine, risk scores
+Rules:
 
----
+- The model receives no Review, Booking, Customer, Provider, or Listing identifiers.
+- `searchTerms` must contain only terms/phrases grounded in redacted `comment` or `reason` input. Exclude names, emails, phone numbers, addresses, IDs, and reconstructed identifiers.
+- Match terms server-side, case-insensitively, as escaped substring searches across `Review.comment` OR `Review.reason`.
+- A row matches when `flag=true`, comment or reason is non-empty, and at least one search term matches either field.
+- Deduplicate rows matching multiple terms. Do not expose which source row the model may have inferred.
+- The high-risk card and drill-down use the latest successful analysis. If the analysis is stale, retain results but label them stale.
+- If `highRiskCase` is null or terms produce no rows, show count `0` and an explanatory no-match state. Never silently substitute all reports.
+- Analysis can prioritize a case but cannot resolve, hide, or mutate a review.
 
-## 5. Shared domain (copy these field lists)
+## 7. Reviews (`/reviews`)
 
-From `src/lib/types/database.ts`.
+Keep the existing all-reviews catalog, sorting, dates, pagination, expandable Review/Booking details, and booking-failure behavior, with these changes:
 
-**Review** (list columns + expand section)
+- Add one visible **Search review text** control. It performs a case-insensitive escaped substring search across `Review.comment` OR `Review.reason`.
+- Keep ID search available for Review/Booking IDs; text search and ID search combine with AND.
+- Rename all `flag` labels and values to **Report status**: All / Reported / Not reported.
+- Use **Resolution status**: All / Unhandled / Resolved. Resolution status is only meaningful for reported reviews.
+- Remove the Booking status filter and `bookingStatus` URL parameter.
+- Do not add Resolve to the full Reviews catalog in this slice.
+- Replace links to Action needed with links to the matching dashboard view.
 
-| Field | Type | List? | Expand? |
-|---|---|---|---|
-| `id` | `rev_…` | yes | yes |
-| `bookingId` | `bkg_…` | yes | yes |
-| `reviewerRole` | `customer` \| `provider` | yes | yes |
-| `rating` | number | yes | yes |
-| `comment` | string | truncated | full |
-| `flag` | boolean | yes | yes |
-| `reason` | string | yes | yes |
-| `handled` | boolean | yes | yes |
-| `createdAt` | ISO string | yes | yes |
+All active filters combine with AND and reset the page to 1. Search is server-side and must work across all matching rows, not only the current page.
 
-**Booking** (expand / hideable extension — all columns)
+## 8. Analysis (`/analysis`)
 
-| Field | Type | Controls on `/reviews` |
+Rename the current Trends page and all user-facing copy to **Analysis**. Preserve:
+
+- on-demand Generate/Regenerate behavior;
+- latest persisted report;
+- executive insights, comparison with the previous report, charts, themes, and grounding tables;
+- loading, error, and timeout handling.
+
+Add the high-risk case summary, rationale, and safe search terms to this page. Show the same freshness state and cutoff logic as Dashboard. A high-risk result links to `/?view=highRisk`; no unique identifier is required.
+
+## 9. URL contract
+
+Unknown or invalid values fall back safely to defaults. Filter changes reset `page=1`.
+
+### Dashboard `/`
+
+| Parameter | Values | Default |
 |---|---|---|
-| `id` | `bkg_…` | search |
-| `listingId` | `lst_…` | search |
-| `customerId` | `cus_…` | search |
-| `providerId` | `prv_…` | search |
-| `status` | `requested` \| `confirmed` \| `completed` \| `cancelled` | filter |
-| `priceAtBooking` | number | sort |
-| `requestedAt` | ISO string | sort |
-| `serviceDate` | ISO string \| null | sort |
+| `view` | `today` \| `unhandled` \| `highRisk` | unset/closed |
+| `q` | string; comment/reason substring | unset |
+| `role` | `customer` \| `provider` | all |
+| `page` | integer ≥ 1 | `1` |
+| `pageSize` | `10` \| `25` \| `50` | `25` |
+| `expanded` | Review ID | unset |
 
-Listing context (`Listing` via `booking.listingId`) is **optional** on the dedicated detail page only. The inline expand is Review + Booking, not Listing.
+### Reviews `/reviews`
 
----
-
-## 6. Feature specs
-
-### T1 — Action needed
-
-- Move `src/app/flagged/` → `src/app/action-needed/` (page, `[id]`, `actions.ts`, `not-found`).
-- Page title: **Action needed**. Subtitle: open flagged reviews waiting to be resolved, oldest first.
-- Keep role tabs, repeat-flag badges, Resolve.
-- Row click **expands** (T4). Do not navigate away on row click. Keep `/action-needed/[id]` as a deep-link full page (include a small “Open full page” in the expanded panel).
-- Revalidate both `/action-needed` and `/flagged` (redirect target) after resolve, plus `/reviews`.
-
-### T2 + T3 — Reviews catalog (`/reviews`)
-
-One list container. Default sort: `createdAt` descending (newest first).
-
-**Review-level controls**
-
-| Control | Behavior |
-|---|---|
-| Search IDs | Case-insensitive prefix/substring on `Review.id` and `Review.bookingId` |
-| Filter `reviewerRole` | All / customer / provider |
-| Filter `flag` | All / true / false |
-| Filter `handled` | All / true / false |
-| Sort `rating` | asc / desc |
-| Sort `createdAt` | asc / desc |
-
-**Booking-level controls** (apply to the review’s related booking)
-
-| Control | Behavior |
-|---|---|
-| Search IDs | Prefix/substring on booking `id`, `listingId`, `customerId`, `providerId` |
-| Filter `status` | All or one of `BOOKING_STATUSES` |
-| Sort `priceAtBooking` | asc / desc |
-| Sort `requestedAt` | asc / desc |
-| Sort `serviceDate` | asc / desc; nulls last |
-
-Only **one** sort field is active at a time (`sort` + `dir`). Booking sorts order the review rows by the related booking field. Reviews whose booking failed to load sort last.
-
-**Date granularity** (always on `Review.createdAt`, timezone **UTC**)
-
-1. Recency preset `createdWithin`:
-   - `all` (default)
-   - `today` — from start of current UTC day
-   - `week` — rolling last 7 days
-   - `month` — rolling last 30 days
-   - `year` — rolling last 365 days
-2. Calendar month `createdMonth`: `1`–`12` or unset. Matches `createdAt` month-of-year (any year unless the recency window also applies).
-
-If both recency and month are set, **AND** them. Empty results are OK (show empty state).
-
-All controls combine with AND. Changing any filter resets `page` to `1`.
-
-### T4 — Expand / hide
-
-- Clicking a row (or its chevron) toggles expansion. Clicking Resolve must **not** toggle the row.
-- Expanded panel is a structured definition list, two blocks:
-  1. **Review** — every Review field.
-  2. **Booking** — every Booking field, with its own show/hide control (default **shown** when the row is expanded).
-- Missing booking: show the review block and an error/empty note in the booking block. Do not collapse the whole row.
-- On **Action needed**, Resolve stays available on the row and in the expanded panel.
-- On **Reviews**, no Resolve button (this is a catalog). Flagged+unhandled rows may link to Action needed.
-
-*(Status: Shipped on `main` via #8.)*
-
-### T5 — Clickable dashboard badges
-
-Wrap or extend `StatCard` with an `href`. Cards must be keyboard-accessible (`<Link>` or `<a>`, not click-only `div`).
-
-| Card | Target |
-|---|---|
-| Total Reviews | `/reviews` |
-| Flagged Reviews | `/reviews?flag=true` |
-| Unhandled Flags | `/action-needed` |
-
-Update dashboard copy that still says “flagged queue”.
-
-*(Status: Shipped on `main` via #8.)*
-
-### T6 — Pagination
-
-- Both `/reviews` and `/action-needed`.
-- Query: `page` (1-based, default 1), `pageSize` (default **25**, allow 10/25/50).
-- Use Supabase `.range()` + exact count. Show “Showing X–Y of Z”.
-- Out-of-range page → clamp to last page or empty state with a reset control.
-- Known limit: PostgREST defaults to max 1000 rows per request. If a booking-side filter requires fetching a large ID set, document the cap in UI when hit (`Z` or loaded count ≥ 1000). Do **not** add a DB view.
-
-**Query strategy (no schema changes):**
-
-- Review-only filters/sorts: push to Supabase (`eq` / `ilike` / `gte` / `order` / `range`).
-- Booking search/filter/sort: query `Booking` first with those predicates, take matching `id`s, then query `Review` with `.in("bookingId", ids)` plus review predicates, then paginate.
-- Keep helpers in `src/lib/queries/` — no new microservice.
-
-### T7 — Booking fetch must not blank the list
-
-**Bug:** `src/app/flagged/page.tsx` skips `FlaggedQueueTable` when `bookingsError` is set.
-
-**Fix:** always render the review list when reviews loaded. If bookings fail or time out: banner with error vs timeout copy, `repeatFlagCounts` empty/zero, booking expand shows the error. Same rule on `/reviews`.
-
-*(Status: Shipped on `main` via #8.)*
-
-### Request states (do not regress)
-
-Database and API calls show:
-
-- **Loading** — spinner + a description of the in-flight call (inner `Suspense`, not a route-level `loading.tsx` on `/reviews` or `/action-needed`, so filters/tabs stay visible).
-- **Error** — “There was an error …” plus optional technical detail.
-- **Timeout** — “The request timed out …” (10s Supabase fetch abort; 90s Gemini). Privileged HTTP proxies return **504**.
-- **Success** — render the data. No success toast.
-
-`failureKind: "error" | "timeout" | null` travels with query results. Classify abort/timeout in `src/lib/queries/query-status.ts`.
-
-### T8 — Preserve query string on Resolve
-
-**Bug:** detail `redirectTo="/flagged"` (and any future redirect) drops `?role=`.
-
-**Fix:**
-
-- `ResolveButton` default: `router.refresh()` (already keeps current URL).
-- If `redirectTo` is used, caller must pass the full path **including** search (e.g. `/action-needed?role=customer&page=2`).
-- Prefer staying on the current list after resolve (row disappears from Action needed after refresh).
-- `revalidatePath` for `/action-needed`, `/action-needed/[id]`, `/reviews`, and redirect aliases.
-
-*(Status: Shipped on `main` via #8.)*
-
-### T9 — Tests
-
-Add Vitest (`npm test`). No live-DB requirement for CI-less local runs.
-
-**Must cover (pure functions / query-param parsers):**
-
-- URL parse/serialize for `/reviews` (every param in §7).
-- UTC recency windows + month filter AND logic.
-- Pagination clamp (page 0, page past end).
-- `computeRepeatFlagCounts` (already in `reviews.ts`) — same-party, exclude self, missing booking → 0.
-- Booking-error UI contract: list still shown (component or helper test).
-
-**Nice to have:** Resolve action revalidate paths; redirect map `/flagged` → `/action-needed`.
-
-Do **not** add Playwright in this slice unless it is free with existing deps.
-
-*(Status: Shipped on `main` via #8. Test counts live in `README.md` / `npm test`.)*
-
----
-
-## 7. URL contract
-
-### `/reviews`
-
-| Param | Values | Default |
+| Parameter | Values | Default |
 |---|---|---|
+| `qText` | string; comment/reason substring | unset |
 | `qReview` | string | unset |
 | `qBooking` | string | unset |
 | `reviewerRole` | `customer` \| `provider` | all |
-| `flag` | `true` \| `false` | all |
+| `report` | `true` \| `false` | all |
 | `handled` | `true` \| `false` | all |
-| `bookingStatus` | `requested` \| `confirmed` \| `completed` \| `cancelled` | all |
-| `sort` | `rating` \| `createdAt` \| `priceAtBooking` \| `requestedAt` \| `serviceDate` | `createdAt` |
+| `sort` | existing supported Review/Booking sort fields | `createdAt` |
 | `dir` | `asc` \| `desc` | `desc` |
 | `createdWithin` | `all` \| `today` \| `week` \| `month` \| `year` | `all` |
 | `createdMonth` | `1`–`12` | unset |
-| `page` | int ≥ 1 | `1` |
+| `page` | integer ≥ 1 | `1` |
 | `pageSize` | `10` \| `25` \| `50` | `25` |
-| `expanded` | review id | unset (optional; open that row) |
+| `expanded` | Review ID | unset |
 
-Dashboard **Flagged Reviews** sets `flag=true` only. Do not also set `handled`.
+Use `report` in new user-facing URLs; accept legacy `flag` URLs temporarily and canonicalize them to `report`. Remove `bookingStatus`.
 
-### `/action-needed`
+## 10. Request and mutation states
 
-Keep existing `role` (`customer` \| `provider`) for the tabs. Add `page`, `pageSize`, optional `expanded`. Default sort remains **oldest first** (`createdAt asc`). Do not require the full `/reviews` filter bar here.
+- **Loading:** show a spinner/skeleton and state what is loading; keep stable controls visible.
+- **Error:** show actionable plain-language copy and optional technical detail.
+- **Timeout:** distinguish timeout from other errors.
+- **Generating:** disable duplicate generation, preserve the previous successful report, and show progress.
+- **Empty/no match:** name the active filter and offer a clear/reset-search action.
+- **Resolve success:** refresh affected counts/lists without a success-only interstitial.
+- **Resolve failure:** keep the row visible and show an inline error; never optimistically mark it resolved permanently.
+- **Partial booking failure:** show Review data and a Booking error state.
 
----
+## 11. Implementation map
 
-## 8. Suggested implementation order
+Likely affected areas:
 
-1. **T7** — smallest bugfix, unblocks honest lists.  
-2. **T1** — route rename + redirects + nav (everything else links here).  
-3. **T9 skeleton** — Vitest + parser helpers first so T3 can TDD the URL contract.  
-4. **T2 / T3 / T6** — catalog query + list + pagination.  
-5. **T4** — shared expandable row on both pages.  
-6. **T5** — dashboard links.  
-7. **T8** — resolve + searchParams.  
-8. **T9 finish** — remaining tests; `npm run lint` and `npm run build` must pass.
+- Dashboard: `src/app/page.tsx`, `src/components/ui/StatCard.tsx`
+- Navigation/routes: `src/components/layout/NavLinks.tsx`, `next.config.ts`, `src/app/action-needed/**`, `src/app/trends/**`, new `src/app/analysis/**`
+- Dashboard report list: reuse/refactor components in `src/components/flagged/**` and `src/components/reviews/**`
+- Reviews filters/search: `src/app/reviews/page.tsx`, `src/lib/reviews/search-params.ts`, `src/lib/queries/review-catalog.ts`
+- Analysis contract/generation: `src/lib/trends/types.ts`, `src/lib/trends/gemini.ts`, `src/lib/trends/generate.ts`, `src/components/trends/**`
+- Freshness/timezone logic: add pure helpers under `src/lib/trends/`
+- Resolve/revalidation: `src/app/action-needed/actions.ts`, `src/lib/queries/reviews.ts`
 
-Use a feature branch (e.g. `feat/reviews-console`). Small commits per task ID.
+Implementation may rename internal `trends`/`flagged` folders when practical, but correct routes, visible terminology, and behavior are the requirement.
 
----
+## 12. Acceptance criteria
 
-## 9. Files likely to change
+Close-gate **PASS-WITH-GAPS** at `35c3289`: items with offline/unit/build evidence are SATISFIED; live Playwright, Gemini, visual §4 a11y, and live-DB count-parity remain UNPROVEN (gaps, not fails). Boxes below are the original spec checklist.
 
-| Area | Paths |
-|---|---|
-| Routes | `src/app/flagged/**` → `src/app/action-needed/**`; `src/app/reviews/page.tsx`; `src/app/page.tsx`; `next.config.ts` |
-| Nav | `src/components/layout/NavLinks.tsx` |
-| UI | `src/components/ui/StatCard.tsx`; new list/expand components under `src/components/reviews/` (keep `src/components/flagged/` or rename if you touch most files) |
-| Queries | `src/lib/queries/reviews.ts`, `bookings.ts`; new `src/lib/reviews/search-params.ts` (parse/serialize) |
-| Tests | `src/lib/**/*.test.ts` (or `src/**/*.test.ts`) |
-| Docs | `README.md` (after ship: replace placeholder language) |
+- [ ] Navigation is Dashboard, Reviews, Analysis; no Action needed item remains.
+- [ ] No current UI copy uses “flag/flagged” or “trend” for reports/analysis.
+- [ ] Legacy Trends, Action needed, and Flagged routes redirect as specified.
+- [ ] Typography minimums, WCAG AA contrast, focus visibility, accessible names, and non-color-only signals meet §4.
+- [ ] Dashboard begins with Generate/Regenerate analysis and displays generation/freshness state plus last-success timestamp.
+- [ ] Cutoff tests cover before, exactly at, and after 9:00 AM; previous-day reports; never-generated; invalid timezone; and failed regeneration.
+- [ ] Dashboard cards appear in the required order and their counts equal their drill-down result counts.
+- [ ] Selecting one card opens one correctly filtered, shareable inline list; Resolve updates the row and all counts.
+- [ ] New reports today uses the configured timezone’s calendar-day boundaries.
+- [ ] High-risk analysis contains no identifiers, returns safe grounded search terms, and matches reported rows by escaped case-insensitive comment/reason substring.
+- [ ] High-risk null, stale, no-match, multi-term, and deduplication cases are tested.
+- [ ] Dashboard shows Executive brief, Changes since last report, Issue trends, and Sentiment trends from the latest successful report.
+- [ ] Reviews text search covers comment and reason across the full dataset; ID searches still work; all filters combine with AND.
+- [ ] Reviews uses Report/Resolution labels, removes Booking status filtering, and has no Resolve action.
+- [ ] Analysis preserves existing charts/detail, adds high-risk content, and shares dashboard freshness state.
+- [ ] Booking enrichment failure never hides Review rows.
+- [ ] No schema migration is added; the service role stays server-only; Resolve only sets `handled=true`.
+- [ ] Automated tests cover URL parsing/canonicalization, filters, pagination, matching, freshness, and timezone boundaries.
+- [ ] `npm test`, `npm run lint`, and `npm run build` pass before implementation is considered complete.
 
-Do not delete `/trends`. Do not add auth.
+## 13. Non-goals
 
----
-
-## 10. Acceptance checklist
-
-- [ ] Nav: Dashboard, Action needed, Reviews, Trends.
-- [ ] `/flagged` and `/flagged/:id` redirect to Action needed equivalents.
-- [ ] `/reviews` lists all reviews with every Review column; booking block expands/hides with every Booking column.
-- [ ] All §7 `/reviews` params work and are shareable (copy URL, reload, same view).
-- [ ] Date presets + month-of-year behave as specified (UTC).
-- [ ] Pagination on both lists; filter change resets to page 1.
-- [ ] Dashboard three stats navigate as specified.
-- [ ] Row click expands structured Review + Booking; Action needed still has Resolve.
-- [ ] Booking fetch failure shows a banner and **still shows** reviews.
-- [ ] Resolve from Action needed (list or detail) keeps `role` / `page` query params.
-- [ ] `npm test`, `npm run lint`, `npm run build` pass.
-- [ ] No schema migrations. Service role key stays server-only (`SUPABASE_SERVICE_ROLE_KEY`). Resolve still only sets `handled=true`.
-
----
-
-## 11. Non-goals reminder
-
-If a follow-up agent is tempted to “just add” any of these, **stop** — they are parking lot: staff login/RBAC, richer resolve, scaffold deletion, Provider/Customer names, NLP, GitHub Actions, bans. (Server-only service role for Review/Booking after shared RLS is already in scope — see hard rules. `/trends` analytics and request-state UX have shipped — do not regress them.)
-
----
-
-## 12. Open questions (defaults if unset)
-
-These are decided so implementers do not block:
-
-| Question | Default |
-|---|---|
-| Timezone for “today” | UTC |
-| “Month” recency | Rolling 30 days, not calendar month (calendar month is `createdMonth`) |
-| Catalog Resolve button | No |
-| Expand booking by default | Yes, once the row is open |
-| Page size | 25 |
-| Old `/flagged` URLs | Redirect, do not keep a second implementation |
+- Staff authentication or RBAC
+- New database tables, columns, views, or migrations
+- Multi-step case management, policy enforcement, bans, risk scoring, or automated resolution
+- Resolve dispositions, notes, actors, or audit history
+- Provider/Customer display-name enrichment
+- Replacing the existing analysis charts or model provider
