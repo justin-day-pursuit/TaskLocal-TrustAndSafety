@@ -18,6 +18,15 @@ export function isNavActive(pathname: string, href: string): boolean {
 }
 
 export const NAV_ITEM_LABELS = NAV_ITEMS.map((item) => item.label);
+export const NAV_ITEM_HREFS = NAV_ITEMS.map((item) => item.href);
+
+/** Pure helper for Analysis nav stale attention (PRD §5.1); hidden while Analysis is active. */
+export function shouldShowAnalysisStaleAttention(
+  pathname: string,
+  analysisStale: boolean
+): boolean {
+  return analysisStale && !isNavActive(pathname, "/analysis");
+}
 
 interface NavLinksProps {
   /** When true, show icon + text attention on the Analysis nav item (PRD §5.1). */
@@ -32,7 +41,8 @@ export function NavLinks({ analysisStale = false }: NavLinksProps) {
       {NAV_ITEMS.map((item) => {
         const isActive = isNavActive(pathname, item.href);
         const showStaleAttention =
-          item.href === "/analysis" && analysisStale && !isActive;
+          item.href === "/analysis" &&
+          shouldShowAnalysisStaleAttention(pathname, analysisStale);
 
         return (
           <Link
