@@ -186,7 +186,7 @@ export function FreshnessStatus({
           {isGenerating ? (
             <>
               <QuerySpinner className="text-white" />
-              {QUERY_COPY.trendGenerate.loading}
+              {QUERY_COPY.analysisGenerate.loading}
             </>
           ) : report ? (
             "Regenerate analysis"
@@ -199,7 +199,7 @@ export function FreshnessStatus({
       {error ? (
         <div className="mt-4">
           <QueryFailureStatus
-            copyKey="trendGenerate"
+            copyKey="analysisGenerate"
             kind={failureKind}
             detail={error}
           />
@@ -216,7 +216,7 @@ export function FreshnessStatus({
         <div className="mt-4">
           <QueryCallStatus
             status="loading"
-            message={QUERY_COPY.trendGenerate.loading}
+            message={QUERY_COPY.analysisGenerate.loading}
           />
         </div>
       ) : null}

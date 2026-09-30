@@ -15,8 +15,8 @@ export function RepeatFlagBadge({ count }: RepeatFlagBadgeProps) {
       }`}
       title={
         isRepeat
-          ? `${totalFlags} open flags against this party`
-          : "First open flag against this party"
+          ? `${totalFlags} open reports against this party`
+          : "First open report against this party"
       }
     >
       {totalFlags}

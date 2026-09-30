@@ -8,6 +8,11 @@ import type { GroundedHighRiskCase, HighRiskSeverity, HighRiskType } from "@/lib
 
 const COMMENT_EXCERPT_LENGTH = 160;
 
+export const HIGH_RISK_CASES_COPY = {
+  openUnhandledReports: "Open unhandled reports",
+  viewInCatalog: "View in reviews catalog",
+} as const;
+
 const RISK_TYPE_LABELS: Record<HighRiskType, string> = {
   safety: "Safety",
   trust: "Trust",
@@ -95,8 +100,8 @@ export function HighRiskCases({ cases }: HighRiskCasesProps) {
                 className="mt-3 inline-flex text-sm font-medium text-tl-primary underline-offset-2 hover:underline"
               >
                 {item.flag && !item.handled
-                  ? "Open in action needed"
-                  : "View in reviews catalog"}
+                  ? HIGH_RISK_CASES_COPY.openUnhandledReports
+                  : HIGH_RISK_CASES_COPY.viewInCatalog}
               </Link>
             </article>
           ))}

@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TaskLocal — Trust & Safety",
   description:
-    "Trust & Safety dashboard for TaskLocal marketplace reviews and flagged bookings.",
+    "Trust & Safety dashboard for TaskLocal marketplace reviews and reported bookings.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

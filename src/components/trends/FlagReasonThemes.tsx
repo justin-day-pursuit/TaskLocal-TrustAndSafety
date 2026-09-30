@@ -3,6 +3,13 @@ import { useId } from "react";
 import { ChartCaption } from "@/components/trends/ChartCaption";
 import type { GeminiFlagReasonTheme } from "@/lib/trends/types";
 
+export const FLAG_REASON_THEMES_COPY = {
+  emptyWithReasons:
+    "No report-reason themes yet. Regenerate to cluster free-typed reasons.",
+  emptyNoReasons: "No report reasons to theme yet.",
+  listAriaLabel: "Report reason themes",
+} as const;
+
 interface FlagReasonThemesProps {
   themes: GeminiFlagReasonTheme[];
   hasFlaggedReasons: boolean;
@@ -21,13 +28,13 @@ export function FlagReasonThemes({
       {themes.length === 0 ? (
         <p className="text-sm text-tl-muted">
           {hasFlaggedReasons
-            ? "No flag-reason themes yet. Regenerate to cluster free-typed reasons."
-            : "No flagged reasons to theme yet."}
+            ? FLAG_REASON_THEMES_COPY.emptyWithReasons
+            : FLAG_REASON_THEMES_COPY.emptyNoReasons}
         </p>
       ) : (
         <div
           role="list"
-          aria-label="Flag reason themes"
+          aria-label={FLAG_REASON_THEMES_COPY.listAriaLabel}
           aria-describedby={caption ? captionId : undefined}
           className="grid gap-3 sm:grid-cols-2"
         >

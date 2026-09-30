@@ -53,6 +53,8 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+export const ISSUE_PATTERNS_CHART_TITLE = "Issue patterns";
+
 const CHART_CAPTIONS = {
   flaggedReviews:
     "Count of reported reviews per month. Taller bars mean more issues reached moderation that month.",
@@ -264,7 +266,7 @@ export function AnalysisWorkspace({
           <HighRiskCases cases={report.highRiskCases ?? []} />
 
           <ChartCard
-            title="Flag / issue patterns"
+            title={ISSUE_PATTERNS_CHART_TITLE}
             explanation={report.insights.flagTrendsExplanation}
             conclusions={report.insights.flagTrendsConclusions}
           >
