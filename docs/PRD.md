@@ -1,11 +1,11 @@
 # Product D — Daily Reviewer Dashboard PRD
 
-**Status:** implemented on `feat/dashboard-integration` @ `35c3289`; not merged to `origin/main`. Planner close-gate **PASS-WITH-GAPS** (live Playwright / Gemini / visual §4 a11y UNPROVEN). Do not treat this slice as live on main.
+**Status:** implemented and merged to `main` (Daily Reviewer Dashboard PRs #22–#32). Planner close-gate **PASS-WITH-GAPS** (live Playwright / Gemini / visual §4 a11y UNPROVEN).
 **Date:** 2026-08-25
 **Owner surface:** TaskLocal Trust & Safety
 **Source of truth:** this document plus committed source; no chat history is required.
 
-**Implementation outcome:** Verified on `feat/dashboard-integration` @ `35c3289` (U1–U10). Green gate: 35 files / 225 tests, lint 0, build 0. `origin/main` still carries the 2026-08-20 Reviews Console PRD and Action-needed / `/trends` UI. Residual gaps (not fails): live in-browser / Playwright smoke, live Gemini, visual §4 a11y, and live-DB count-parity.
+**Implementation outcome:** Verified U1–U10 on `feat/dashboard-integration` @ `35c3289`, then merged to `main`. Green gate: 35 files / 225 tests, lint 0, build 0. Residual gaps (not fails): live in-browser / Playwright smoke, live Gemini, visual §4 a11y, and live-DB count-parity.
 
 ## 1. Product goal
 
