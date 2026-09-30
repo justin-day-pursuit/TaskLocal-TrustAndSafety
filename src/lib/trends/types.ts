@@ -43,7 +43,18 @@ export interface GeminiHighRiskItem {
   recommendedAction: string;
 }
 
-export interface HighRiskCase {
+/** PRD §6 — nullable analysis contract surfaced to dashboard/analysis UI. */
+export interface HighRiskCasePayload {
+  title: string;
+  summary: string;
+  rationale: string;
+  searchTerms: string[];
+}
+
+export type HighRiskCase = HighRiskCasePayload | null;
+
+/** Grounded sample row from Gemini highRiskItems (trends workspace only). */
+export interface GroundedHighRiskCase {
   reviewId: string;
   sampleId: string;
   severity: HighRiskSeverity;
@@ -141,6 +152,7 @@ export interface GeminiInsights {
   keywordThemes: GeminiKeywordTheme[];
   flagReasonThemes: GeminiFlagReasonTheme[];
   highRiskItems: GeminiHighRiskItem[];
+  highRiskCase: HighRiskCase;
   changeSinceLast: GeminiChangeSinceLast;
 }
 
@@ -157,7 +169,7 @@ export interface TrendReport {
   watermark: TrendWatermark;
   aggregates: TrendAggregates;
   insights: GeminiInsights;
-  highRiskCases: HighRiskCase[];
+  highRiskCases: GroundedHighRiskCase[];
   groundingSample: StrippedReview[];
   priorSummary: {
     goingWell: string[];

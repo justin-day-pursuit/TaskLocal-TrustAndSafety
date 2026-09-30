@@ -104,6 +104,35 @@ describe("trend report persist", () => {
     expect(loaded.data?.highRiskCases).toEqual([]);
   });
 
+  it("loads an old report missing insights.highRiskCase as null", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "trends-"));
+    const filePath = path.join(dir, "trends-last-report.json");
+    const report: TrendReport = {
+      generatedAt: "2026-08-24T00:00:00.000Z",
+      modelUsed: "gemini-3.5-flash",
+      watermark: {
+        rowCount: 0,
+        newestCreated: null,
+        comparable: false,
+        fingerprints: [],
+      },
+      aggregates: computeTrendAggregates([]),
+      insights: emptyInsights(),
+      highRiskCases: [],
+      groundingSample: [],
+      priorSummary: null,
+    };
+    const raw = JSON.parse(JSON.stringify(report)) as {
+      insights: { highRiskCase?: unknown };
+    };
+    delete raw.insights.highRiskCase;
+    await writeFile(filePath, `${JSON.stringify(raw)}\n`, "utf8");
+
+    const loaded = await loadLastTrendReport(filePath);
+    expect(loaded.error).toBeNull();
+    expect(loaded.data?.insights.highRiskCase).toBeNull();
+  });
+
   it("returns an empty success when no report file exists", async () => {
     const loaded = await loadLastTrendReport(
       path.join(os.tmpdir(), "missing-trends-report.json")

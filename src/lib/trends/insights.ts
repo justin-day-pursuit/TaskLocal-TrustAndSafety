@@ -6,6 +6,7 @@ import {
   type GeminiHighRiskItem,
   type GeminiInsights,
   type GeminiKeywordTheme,
+  type GroundedHighRiskCase,
   type HighRiskCase,
   type HighRiskSeverity,
   type HighRiskType,
@@ -40,6 +41,7 @@ export function emptyInsights(message?: string): GeminiInsights {
     keywordThemes: [],
     flagReasonThemes: [],
     highRiskItems: [],
+    highRiskCase: null,
     changeSinceLast: {
       hasPrevious: false,
       newReviewCount: 0,
@@ -139,11 +141,41 @@ export function parseHighRiskItems(value: unknown): GeminiHighRiskItem[] {
     .filter((item): item is GeminiHighRiskItem => item !== null);
 }
 
+function normalizeSearchTerms(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((term) => (typeof term === "string" ? term.trim() : ""))
+    .filter((term) => term.length > 0);
+}
+
+export function parseHighRiskCase(value: unknown): HighRiskCase {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const title = typeof value.title === "string" ? value.title.trim() : "";
+  const summary = typeof value.summary === "string" ? value.summary.trim() : "";
+  const rationale =
+    typeof value.rationale === "string" ? value.rationale.trim() : "";
+  const searchTerms = normalizeSearchTerms(value.searchTerms);
+
+  if (!title || !summary || !rationale || searchTerms.length === 0) {
+    return null;
+  }
+
+  return { title, summary, rationale, searchTerms };
+}
+
 export function groundHighRiskItems(
   items: GeminiHighRiskItem[],
   sampleById: Map<string, TrendReviewRow>
-): HighRiskCase[] {
-  const grounded: HighRiskCase[] = [];
+): GroundedHighRiskCase[] {
+  const grounded: GroundedHighRiskCase[] = [];
   const seenReviewIds = new Set<string>();
 
   const sorted = [...items].sort(
@@ -190,6 +222,9 @@ export function normalizeGeminiInsights(insights: GeminiInsights): GeminiInsight
     highRiskItems: parseHighRiskItems(
       (insights as { highRiskItems?: unknown }).highRiskItems
     ),
+    highRiskCase: parseHighRiskCase(
+      (insights as { highRiskCase?: unknown }).highRiskCase
+    ),
   };
 }
 
@@ -200,6 +235,7 @@ export function isGeminiInsights(value: unknown): value is GeminiInsights {
 
   const flagReasonThemes = value.flagReasonThemes;
   const highRiskItems = value.highRiskItems;
+  const highRiskCase = value.highRiskCase;
 
   return (
     Array.isArray(value.goingWell) &&
@@ -214,6 +250,9 @@ export function isGeminiInsights(value: unknown): value is GeminiInsights {
     Array.isArray(value.keywordThemes) &&
     (flagReasonThemes === undefined || Array.isArray(flagReasonThemes)) &&
     (highRiskItems === undefined || Array.isArray(highRiskItems)) &&
+    (highRiskCase === undefined ||
+      highRiskCase === null ||
+      isRecord(highRiskCase)) &&
     isRecord(value.changeSinceLast)
   );
 }
@@ -248,6 +287,9 @@ export function parseGeminiInsightsText(text: string): GeminiInsights {
     ),
     highRiskItems: parseHighRiskItems(
       (parsed as { highRiskItems?: unknown }).highRiskItems
+    ),
+    highRiskCase: parseHighRiskCase(
+      (parsed as { highRiskCase?: unknown }).highRiskCase
     ),
     changeSinceLast: {
       hasPrevious: Boolean(change.hasPrevious),

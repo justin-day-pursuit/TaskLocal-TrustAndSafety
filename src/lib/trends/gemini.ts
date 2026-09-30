@@ -102,6 +102,20 @@ const INSIGHTS_SCHEMA: Schema = {
         ],
       },
     },
+    highRiskCase: {
+      type: Type.OBJECT,
+      nullable: true,
+      properties: {
+        title: { type: Type.STRING },
+        summary: { type: Type.STRING },
+        rationale: { type: Type.STRING },
+        searchTerms: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+        },
+      },
+      required: ["title", "summary", "rationale", "searchTerms"],
+    },
     changeSinceLast: {
       type: Type.OBJECT,
       properties: {
@@ -137,6 +151,7 @@ const INSIGHTS_SCHEMA: Schema = {
     "keywordThemes",
     "flagReasonThemes",
     "highRiskItems",
+    "highRiskCase",
     "changeSinceLast",
   ],
 };
@@ -194,6 +209,7 @@ function buildPrompt(
     "High-risk cases: return only sample rows that currently need human review because they are, or could become, a high or critical Trust & Safety issue. Put them in highRiskItems. Cite only sampleId values from this sample (S1, S2, …). Do not invent IDs or counts. Do not use review or booking IDs.",
     "severity is critical or high. riskType is one of: safety (harm, threats, harassment, discrimination, unsafe service); trust (fraud, scams, impersonation, fake or coordinated reviews); policy (serious conduct or marketplace abuse beyond ordinary complaints); platform (review/flag-system abuse, or contradictory or impossible claims that suggest data or marketplace integrity problems).",
     "Prefer unhandled rows. Still include unflagged comments if the text itself is high-risk. Skip ordinary low ratings, late arrivals, and already-handled items unless residual risk is still critical. Return an empty highRiskItems array when nothing qualifies. Each item needs sampleId, severity, riskType, summary, whyItMatters, and recommendedAction.",
+    "High-risk analysis (§6): populate highRiskCase when the corpus contains one flagged pattern that merits a dedicated reviewer focus. highRiskCase is null when nothing qualifies. When non-null it needs title, summary, rationale, and searchTerms — an array of redacted words or short phrases copied only from comment or reason text in this sample. Exclude names, emails, phones, addresses, IDs, and reconstructed identifiers. Do not include review, booking, customer, provider, or listing identifiers. searchTerms must be grounded in the redacted sample; admins will match them server-side across flagged review comment and reason fields. Return null instead of an object with empty searchTerms.",
     "",
     "Current aggregates (source of truth):",
     JSON.stringify(input.aggregates),
