@@ -319,7 +319,7 @@ export async function getFlaggedReviewsPaginated(params: {
     if (countError) {
       const failure = queryFail(
         countError,
-        "Failed to load flagged reviews"
+        "Failed to load reported reviews"
       );
       return emptyCatalogResult(flaggedQueueParams(params), {
         error: failure.error,
@@ -346,7 +346,7 @@ export async function getFlaggedReviewsPaginated(params: {
     const { data, error } = await query;
 
     if (error) {
-      const failure = queryFail(error, "Failed to load flagged reviews");
+      const failure = queryFail(error, "Failed to load reported reviews");
       return emptyCatalogResult(flaggedQueueParams(params), {
         error: failure.error,
         failureKind: failure.failureKind,
@@ -370,7 +370,7 @@ export async function getFlaggedReviewsPaginated(params: {
       failureKind: null,
     };
   } catch (error) {
-    const failure = queryFail(error, "Failed to load flagged reviews");
+    const failure = queryFail(error, "Failed to load reported reviews");
     return emptyCatalogResult(flaggedQueueParams(params), {
       error: failure.error,
       failureKind: failure.failureKind,

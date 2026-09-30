@@ -79,7 +79,7 @@ async function loadFromFile(filePath: string): Promise<{
     if (!isTrendReport(parsed)) {
       return queryFail(
         "Trend report file is invalid.",
-        "Failed to load trend report"
+        "Failed to load analysis report"
       );
     }
     return queryOk(normalizeTrendReport(parsed));
@@ -91,7 +91,7 @@ async function loadFromFile(filePath: string): Promise<{
     if (code === "ENOENT") {
       return queryOk(null);
     }
-    return queryFail(error, "Failed to load trend report");
+    return queryFail(error, "Failed to load analysis report");
   }
 }
 
@@ -105,7 +105,7 @@ async function saveToFile(
     return { error: null };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to save trend report";
+      error instanceof Error ? error.message : "Failed to save analysis report";
     return { error: message };
   }
 }
@@ -156,7 +156,7 @@ async function loadFromSupabaseStorage(): Promise<{
       if (isMissingStorageObject(error.message)) {
         return queryOk(null);
       }
-      return queryFail(error, "Failed to load trend report");
+      return queryFail(error, "Failed to load analysis report");
     }
 
     if (!data) {
@@ -167,12 +167,12 @@ async function loadFromSupabaseStorage(): Promise<{
     if (!isTrendReport(parsed)) {
       return queryFail(
         "Trend report in storage is invalid.",
-        "Failed to load trend report"
+        "Failed to load analysis report"
       );
     }
     return queryOk(normalizeTrendReport(parsed));
   } catch (error) {
-    return queryFail(error, "Failed to load trend report");
+    return queryFail(error, "Failed to load analysis report");
   }
 }
 
@@ -201,7 +201,7 @@ async function saveToSupabaseStorage(
     const message =
       error instanceof Error
         ? error.message
-        : "Failed to save trend report to Supabase Storage";
+        : "Failed to save analysis report to Supabase Storage";
     return { error: message };
   }
 }

@@ -87,7 +87,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (reviewError) {
-      return queryFail(reviewError, "Failed to compute repeat flag count");
+      return queryFail(reviewError, "Failed to compute repeat report counts");
     }
 
     if (!review) {
@@ -102,7 +102,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (bookingError) {
-      return queryFail(bookingError, "Failed to compute repeat flag count");
+      return queryFail(bookingError, "Failed to compute repeat report counts");
     }
 
     if (!booking) {
@@ -122,7 +122,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .eq("reviewerRole", typedReview.reviewerRole);
 
     if (flagsError) {
-      return queryFail(flagsError, "Failed to compute repeat flag count");
+      return queryFail(flagsError, "Failed to compute repeat report counts");
     }
 
     const reviews = (openFlaggedReviews ?? []) as Review[];
@@ -155,7 +155,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
 
     return queryOk(count);
   } catch (error) {
-    return queryFail(error, "Failed to compute repeat flag count");
+    return queryFail(error, "Failed to compute repeat report counts");
   }
 }
 
@@ -180,12 +180,12 @@ export async function getFlaggedReviews(reviewerRole?: ReviewerRole): Promise<{
     const { data, error } = await query;
 
     if (error) {
-      return queryFail(error, "Failed to load flagged reviews");
+      return queryFail(error, "Failed to load reported reviews");
     }
 
     return queryOk(data as Review[]);
   } catch (error) {
-    return queryFail(error, "Failed to load flagged reviews");
+    return queryFail(error, "Failed to load reported reviews");
   }
 }
 
@@ -339,7 +339,7 @@ export async function listFlaggedReviewsWithBookings(): Promise<{
       .order("createdAt", { ascending: false });
 
     if (error) {
-      return queryFail(error, "Failed to load flagged reviews");
+      return queryFail(error, "Failed to load reported reviews");
     }
 
     const reviews = (data ?? []) as Review[];
@@ -360,7 +360,7 @@ export async function listFlaggedReviewsWithBookings(): Promise<{
 
     return queryOk(attachBookingContext(reviews, bookings ?? []));
   } catch (error) {
-    return queryFail(error, "Failed to load flagged reviews");
+    return queryFail(error, "Failed to load reported reviews");
   }
 }
 

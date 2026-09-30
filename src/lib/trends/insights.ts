@@ -30,10 +30,10 @@ export function emptyInsights(message?: string): GeminiInsights {
     goingWell: [],
     needsWork: [detail],
     actionPlan: [
-      "Collect completed-booking reviews before relying on trend analysis.",
+      "Collect completed-booking reviews before relying on analysis.",
     ],
     flagTrendsExplanation: detail,
-    flagTrendsConclusions: "No flag trend can be concluded from an empty set.",
+    flagTrendsConclusions: "No issue-pattern conclusion from an empty set.",
     sentimentExplanation: detail,
     sentimentConclusions: "No sentiment trend can be concluded from an empty set.",
     sentimentOverallLabel: "insufficient data",

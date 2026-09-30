@@ -87,8 +87,8 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
 
       if (gemini.error || !gemini.insights) {
         const failure = toQueryFailure(
-          gemini.error ?? "Failed to generate the trend report.",
-          "Failed to generate the trend report."
+          gemini.error ?? "Failed to generate the analysis report.",
+          "Failed to generate the analysis report."
         );
         return {
           data: null,
@@ -111,7 +111,7 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
     } catch (error) {
       const failure = toQueryFailure(
         error,
-        "Failed to generate the trend report."
+        "Failed to generate the analysis report."
       );
       return {
         data: null,
