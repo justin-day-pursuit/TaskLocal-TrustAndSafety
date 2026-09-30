@@ -10,6 +10,10 @@ import {
 import { useRouter } from "next/navigation";
 
 import {
+  dashboardHref,
+  type DashboardParams,
+} from "@/lib/dashboard/search-params";
+import {
   serializeActionNeededListParams,
   serializeReviewsCatalogParams,
   type ActionNeededListParams,
@@ -38,13 +42,26 @@ type ReviewRowExpandProviderProps =
       listParams: ReviewsCatalogParams;
       initialExpandedId?: string;
       children: ReactNode;
+    }
+  | {
+      listPath: "/";
+      listParams: DashboardParams;
+      initialExpandedId?: string;
+      children: ReactNode;
     };
 
 function buildHref(
-  listPath: "/action-needed" | "/reviews",
-  listParams: ActionNeededListParams | ReviewsCatalogParams,
+  listPath: "/" | "/action-needed" | "/reviews",
+  listParams: ActionNeededListParams | ReviewsCatalogParams | DashboardParams,
   expanded?: string
 ): string {
+  if (listPath === "/") {
+    return dashboardHref({
+      ...(listParams as DashboardParams),
+      expanded,
+    });
+  }
+
   if (listPath === "/action-needed") {
     const qs = serializeActionNeededListParams({
       ...(listParams as ActionNeededListParams),

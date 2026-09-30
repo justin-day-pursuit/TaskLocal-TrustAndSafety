@@ -36,13 +36,14 @@ describe("staleAnalysisMessage", () => {
   });
 });
 
-describe("freshness parity with dashboard helpers", () => {
-  it("uses the same U1 computeFreshness inputs for Analysis and Dashboard", () => {
-    const timeZone = "America/New_York";
-    const now = new Date("2026-01-15T15:00:00.000Z");
-    const lastSuccessAt = "2026-01-15T13:00:00.000Z";
+describe("freshness parity with U1 computeFreshness", () => {
+  it("labels stale analysis as Analysis due", () => {
+    const persisted = computeFreshness({
+      lastSuccessAt: "2026-01-15T13:00:00.000Z",
+      now: new Date("2026-01-15T15:00:00.000Z"),
+      timeZone: "America/New_York",
+    });
 
-    const persisted = computeFreshness({ lastSuccessAt, now, timeZone });
     expect(freshnessStatusLabel(persisted.status)).toBe("Analysis due");
     expect(persisted.isStale).toBe(true);
   });
