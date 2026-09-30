@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { generateAnalysisReportAction } from "@/app/analysis/actions";
+import {
+  deriveFreshnessDisplayStatus,
+  FreshnessIndicator,
+} from "@/components/analysis/FreshnessIndicator";
+import { HighRiskCaseSummary } from "@/components/analysis/HighRiskCaseSummary";
 import { BarChart } from "@/components/trends/BarChart";
 import { ChartCard } from "@/components/trends/ChartCard";
 import { FlagReasonThemes } from "@/components/trends/FlagReasonThemes";
@@ -16,13 +22,18 @@ import {
   QueryFailureStatus,
   QuerySpinner,
 } from "@/components/ui/QueryCallStatus";
-import { generateTrendsReportAction } from "@/app/trends/actions";
 import { QUERY_COPY, type QueryFailureKind } from "@/lib/queries/query-status";
+import {
+  computeFreshness,
+  type FreshnessResult,
+} from "@/lib/trends/freshness";
 import type { TrendReport } from "@/lib/trends/types";
 import { semanticCloudItems } from "@/lib/trends/word-cloud-layout";
 
-interface TrendsWorkspaceProps {
+interface AnalysisWorkspaceProps {
   initialReport: TrendReport | null;
+  initialFreshness: FreshnessResult;
+  appTimeZone: string;
   autoGenerate: boolean;
   loadError?: string | null;
   loadFailureKind?: QueryFailureKind | null;
@@ -30,8 +41,9 @@ interface TrendsWorkspaceProps {
 
 let autoGenerateStarted = false;
 
-function formatGeneratedAt(iso: string): string {
+function formatGeneratedAt(iso: string, timeZone: string): string {
   return new Date(iso).toLocaleString("en-US", {
+    timeZone,
     dateStyle: "medium",
     timeStyle: "short",
   });
@@ -43,9 +55,9 @@ function formatPercent(value: number): string {
 
 const CHART_CAPTIONS = {
   flaggedReviews:
-    "Count of flagged reviews per month. Taller bars mean more issues reached moderation that month.",
+    "Count of reported reviews per month. Taller bars mean more issues reached moderation that month.",
   flagsByReason:
-    "Flag reasons are free-typed. Similar wording is grouped into themes. Quoted phrases are copied from the original reason text.",
+    "Report reasons are free-typed. Similar wording is grouped into themes. Quoted phrases are copied from the original reason text.",
   averageRating:
     "Mean star rating by month (1–5). The slope shows whether overall sentiment is improving or worsening.",
   ratingDistribution:
@@ -54,39 +66,60 @@ const CHART_CAPTIONS = {
     "Only sentiment, task, issue, and praise words are plotted. Larger, more central terms showed up more often in comments. Terms sit in four wedges: praise, task, issue, and sentiment.",
 } as const;
 
-export function TrendsWorkspace({
+export function AnalysisWorkspace({
   initialReport,
+  initialFreshness,
+  appTimeZone,
   autoGenerate,
   loadError = null,
   loadFailureKind = null,
-}: TrendsWorkspaceProps) {
+}: AnalysisWorkspaceProps) {
   const router = useRouter();
   const [report, setReport] = useState<TrendReport | null>(initialReport);
+  const [freshness, setFreshness] = useState<FreshnessResult>(initialFreshness);
   const [error, setError] = useState<string | null>(loadError);
   const [failureKind, setFailureKind] = useState<QueryFailureKind | null>(
     loadFailureKind
   );
-  const [errorCopyKey, setErrorCopyKey] = useState<"trendReport" | "trendGenerate">(
-    loadError ? "trendReport" : "trendGenerate"
-  );
+  const [errorCopyKey, setErrorCopyKey] = useState<
+    "analysisReport" | "analysisGenerate"
+  >(loadError ? "analysisReport" : "analysisGenerate");
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationFailed, setGenerationFailed] = useState(false);
+
+  const lastSuccessAt = report?.generatedAt ?? null;
+
+  const displayStatus = useMemo(
+    () =>
+      deriveFreshnessDisplayStatus(freshness, isGenerating, generationFailed),
+    [freshness, generationFailed, isGenerating]
+  );
 
   async function runGenerate() {
     setError(null);
     setFailureKind(null);
     setPersistWarning(null);
+    setGenerationFailed(false);
     setIsGenerating(true);
     try {
-      const result = await generateTrendsReportAction();
+      const result = await generateAnalysisReportAction();
       if (result.error || !result.data) {
-        setError(result.error ?? "Failed to generate the trend report.");
+        setError(result.error ?? "Failed to generate the analysis report.");
         setFailureKind(result.failureKind ?? "error");
-        setErrorCopyKey("trendGenerate");
+        setErrorCopyKey("analysisGenerate");
+        setGenerationFailed(true);
         return;
       }
       setReport(result.data);
       setPersistWarning(result.persistWarning);
+      setFreshness(
+        computeFreshness({
+          lastSuccessAt: result.data.generatedAt,
+          now: new Date(),
+          timeZone: appTimeZone,
+        })
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -97,11 +130,11 @@ export function TrendsWorkspace({
       return;
     }
     if (loadError) {
-      router.replace("/trends");
+      router.replace("/analysis");
       return;
     }
     if (initialReport) {
-      router.replace("/trends");
+      router.replace("/analysis");
       return;
     }
     if (autoGenerateStarted) {
@@ -110,10 +143,12 @@ export function TrendsWorkspace({
     autoGenerateStarted = true;
     const timeout = window.setTimeout(() => {
       void runGenerate().then(() => {
-        router.replace("/trends");
+        router.replace("/analysis");
       });
     }, 0);
     return () => window.clearTimeout(timeout);
+    // runGenerate intentionally omitted: one-shot auto-generate on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoGenerate, initialReport, loadError, router]);
 
   const hasReport = report !== null;
@@ -133,19 +168,27 @@ export function TrendsWorkspace({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-tl-text">Trends</h2>
-          <p className="mt-1 text-sm text-tl-muted">
-            On-demand Gemini analysis. Review IDs and booking keys are removed
-            first. Direct identifiers (emails, phone numbers, links) are removed
-            before analysis. Remaining comments and flag reasons are sent to
-            Google.
-          </p>
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-2xl font-semibold text-tl-text">Analysis</h2>
+            <p className="mt-1 text-sm text-tl-muted">
+              On-demand Gemini analysis. Review IDs and booking keys are removed
+              first. Direct identifiers (emails, phone numbers, links) are
+              removed before analysis. Remaining comments and report reasons are
+              sent to Google.
+            </p>
+          </div>
+          <FreshnessIndicator
+            displayStatus={displayStatus}
+            lastSuccessAt={lastSuccessAt}
+            timeZone={appTimeZone}
+          />
           {report ? (
-            <p className="mt-2 text-xs text-tl-muted">
-              Analyzed with {report.modelUsed} · {formatGeneratedAt(report.generatedAt)} ·{" "}
+            <p className="text-xs text-tl-muted">
+              Analyzed with {report.modelUsed} ·{" "}
+              {formatGeneratedAt(report.generatedAt, appTimeZone)} ·{" "}
               {report.aggregates.totalReviews} reviews ·{" "}
-              {formatPercent(report.aggregates.flagRate)} flagged · avg rating{" "}
+              {formatPercent(report.aggregates.flagRate)} reported · avg rating{" "}
               {report.aggregates.averageRating.toFixed(2)}
             </p>
           ) : null}
@@ -156,17 +199,18 @@ export function TrendsWorkspace({
             void runGenerate();
           }}
           disabled={isGenerating}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[10px] bg-tl-primary px-4 py-2 text-sm font-medium text-white transition hover:brightness-90 disabled:cursor-not-allowed disabled:bg-tl-muted disabled:hover:brightness-100"
+          aria-busy={isGenerating}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-[10px] bg-tl-primary px-4 py-2 text-sm font-medium text-white transition hover:brightness-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tl-primary disabled:cursor-not-allowed disabled:bg-tl-muted disabled:hover:brightness-100"
         >
           {isGenerating ? (
             <>
               <QuerySpinner className="text-white" />
-              {QUERY_COPY.trendGenerate.loading}
+              {QUERY_COPY.analysisGenerate.loading}
             </>
           ) : hasReport ? (
-            "Regenerate trend report"
+            "Regenerate analysis"
           ) : (
-            "Generate trend report"
+            "Generate analysis"
           )}
         </button>
       </div>
@@ -179,7 +223,10 @@ export function TrendsWorkspace({
         />
       ) : null}
       {persistWarning ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          role="status"
+        >
           {persistWarning}
         </div>
       ) : null}
@@ -187,17 +234,19 @@ export function TrendsWorkspace({
       {isGenerating ? (
         <QueryCallStatus
           status="loading"
-          message={QUERY_COPY.trendGenerate.loading}
+          message={QUERY_COPY.analysisGenerate.loading}
         />
       ) : null}
 
       {!hasReport && !isGenerating && !error ? (
         <section className="rounded-[10px] border border-dashed border-tl-border bg-white p-8">
-          <h3 className="text-lg font-medium text-tl-text">No trend report yet</h3>
+          <h3 className="text-lg font-medium text-tl-text">
+            No analysis report yet
+          </h3>
           <p className="mt-2 max-w-2xl text-sm text-tl-muted">
-            Click generate to analyze reviewer, rating, comment, flag, reason,
+            Click generate to analyze reviewer, rating, comment, report, reason,
             created, and service date. Gemini writes explanations and an action
-            plan. Flag trends, sentiment, keywords, and tables are calculated
+            plan. Issue patterns, sentiment, keywords, and tables are calculated
             from the same rows on this server.
           </p>
         </section>
@@ -207,10 +256,15 @@ export function TrendsWorkspace({
         <>
           <InsightsPanel insights={report.insights} showChange={showChange} />
 
+          <HighRiskCaseSummary
+            highRiskCase={report.insights.highRiskCase}
+            isStale={freshness.isStale}
+          />
+
           <HighRiskCases cases={report.highRiskCases ?? []} />
 
           <ChartCard
-            title="Flag / issue trends"
+            title="Flag / issue patterns"
             explanation={report.insights.flagTrendsExplanation}
             conclusions={report.insights.flagTrendsConclusions}
           >
@@ -219,12 +273,12 @@ export function TrendsWorkspace({
                 label: point.month,
                 value: point.flagged,
               }))}
-              yLabel="Flagged reviews"
+              yLabel="Reported reviews"
               caption={CHART_CAPTIONS.flaggedReviews}
             />
             <div className="mt-6">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tl-muted">
-                Flags by reason
+                Reports by reason
               </p>
               <FlagReasonThemes
                 themes={report.insights.flagReasonThemes}
@@ -235,7 +289,7 @@ export function TrendsWorkspace({
           </ChartCard>
 
           <ChartCard
-            title="Sentiment trends"
+            title="Sentiment over time"
             explanation={report.insights.sentimentExplanation}
             conclusions={`${report.insights.sentimentOverallLabel}. ${report.insights.sentimentConclusions}`}
           >

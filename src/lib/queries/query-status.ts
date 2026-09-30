@@ -79,6 +79,16 @@ export const QUERY_COPY = {
     error: "There was an error generating the trend report.",
     timeout: "The request timed out while generating the trend report.",
   },
+  analysisReport: {
+    loading: "Loading the last analysis report…",
+    error: "There was an error loading the last analysis report.",
+    timeout: "The request timed out while loading the last analysis report.",
+  },
+  analysisGenerate: {
+    loading: "Generating the analysis report…",
+    error: "There was an error generating the analysis report.",
+    timeout: "The request timed out while generating the analysis report.",
+  },
 } as const;
 
 export type QueryCopyKey = keyof typeof QUERY_COPY;
