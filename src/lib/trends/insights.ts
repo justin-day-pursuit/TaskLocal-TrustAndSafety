@@ -21,6 +21,21 @@ const SEVERITY_RANK: Record<HighRiskSeverity, number> = {
   high: 1,
 };
 
+/** Strings from default emptyInsights() shown in analysis UI (regression scan set). */
+export function emptyInsightsUserVisibleCopy(): string[] {
+  const insights = emptyInsights();
+  return [
+    ...insights.needsWork,
+    ...insights.actionPlan,
+    insights.flagTrendsExplanation,
+    insights.flagTrendsConclusions,
+    insights.sentimentExplanation,
+    insights.sentimentConclusions,
+    insights.sentimentOverallLabel,
+    insights.keywordsExplanation,
+  ];
+}
+
 export function emptyInsights(message?: string): GeminiInsights {
   const detail =
     message ??
@@ -35,7 +50,8 @@ export function emptyInsights(message?: string): GeminiInsights {
     flagTrendsExplanation: detail,
     flagTrendsConclusions: "No issue-pattern conclusion from an empty set.",
     sentimentExplanation: detail,
-    sentimentConclusions: "No sentiment trend can be concluded from an empty set.",
+    sentimentConclusions:
+      "No sentiment conclusion can be drawn from an empty set.",
     sentimentOverallLabel: "insufficient data",
     keywordsExplanation: detail,
     keywordThemes: [],

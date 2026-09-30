@@ -6,6 +6,15 @@ import { createServerClient } from "@/lib/supabase/server";
 import { isGeminiInsights, normalizeGeminiInsights } from "@/lib/trends/insights";
 import type { TrendAggregates, TrendReport, TrendWatermark } from "@/lib/trends/types";
 
+export const PERSIST_USER_FACING_COPY = {
+  invalidFile: "Analysis report file is invalid.",
+  invalidStorage: "Analysis report in storage is invalid.",
+  loadFailed: "Failed to load analysis report",
+  saveFailed: "Failed to save analysis report",
+  saveStorageFailed: "Failed to save analysis report to Supabase Storage",
+  prepareBucketFailed: "Failed to prepare storage bucket",
+} as const;
+
 export const DEFAULT_TREND_REPORT_PATH = path.join(
   process.cwd(),
   "data",
@@ -78,8 +87,8 @@ async function loadFromFile(filePath: string): Promise<{
     const parsed: unknown = JSON.parse(raw);
     if (!isTrendReport(parsed)) {
       return queryFail(
-        "Trend report file is invalid.",
-        "Failed to load analysis report"
+        PERSIST_USER_FACING_COPY.invalidFile,
+        PERSIST_USER_FACING_COPY.loadFailed
       );
     }
     return queryOk(normalizeTrendReport(parsed));
@@ -91,7 +100,7 @@ async function loadFromFile(filePath: string): Promise<{
     if (code === "ENOENT") {
       return queryOk(null);
     }
-    return queryFail(error, "Failed to load analysis report");
+    return queryFail(error, PERSIST_USER_FACING_COPY.loadFailed);
   }
 }
 
@@ -105,7 +114,7 @@ async function saveToFile(
     return { error: null };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to save analysis report";
+      error instanceof Error ? error.message : PERSIST_USER_FACING_COPY.saveFailed;
     return { error: message };
   }
 }
@@ -130,7 +139,9 @@ async function ensureTrendsBucket(): Promise<{ error: string | null }> {
     return { error: null };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to prepare storage bucket";
+      error instanceof Error
+        ? error.message
+        : PERSIST_USER_FACING_COPY.prepareBucketFailed;
     return { error: message };
   }
 }
@@ -156,7 +167,7 @@ async function loadFromSupabaseStorage(): Promise<{
       if (isMissingStorageObject(error.message)) {
         return queryOk(null);
       }
-      return queryFail(error, "Failed to load analysis report");
+      return queryFail(error, PERSIST_USER_FACING_COPY.loadFailed);
     }
 
     if (!data) {
@@ -166,13 +177,13 @@ async function loadFromSupabaseStorage(): Promise<{
     const parsed: unknown = JSON.parse(await data.text());
     if (!isTrendReport(parsed)) {
       return queryFail(
-        "Trend report in storage is invalid.",
-        "Failed to load analysis report"
+        PERSIST_USER_FACING_COPY.invalidStorage,
+        PERSIST_USER_FACING_COPY.loadFailed
       );
     }
     return queryOk(normalizeTrendReport(parsed));
   } catch (error) {
-    return queryFail(error, "Failed to load analysis report");
+    return queryFail(error, PERSIST_USER_FACING_COPY.loadFailed);
   }
 }
 
@@ -201,7 +212,7 @@ async function saveToSupabaseStorage(
     const message =
       error instanceof Error
         ? error.message
-        : "Failed to save analysis report to Supabase Storage";
+        : PERSIST_USER_FACING_COPY.saveStorageFailed;
     return { error: message };
   }
 }
