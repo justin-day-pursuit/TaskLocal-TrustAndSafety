@@ -14,6 +14,11 @@ import {
 
 const GROUNDING_SAMPLE_SIZE = 40;
 
+export const GENERATE_USER_FACING_COPY = {
+  loadReviewsFailed: "Failed to load reviews.",
+  generateFailed: "Failed to generate the analysis report.",
+} as const;
+
 function mostRecentRows(rows: StrippedReview[], limit: number): StrippedReview[] {
   if (rows.length <= limit) {
     return rows;
@@ -37,7 +42,7 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
   if (fetched.error || !fetched.data) {
     return {
       data: null,
-      error: fetched.error ?? "Failed to load reviews.",
+      error: fetched.error ?? GENERATE_USER_FACING_COPY.loadReviewsFailed,
       failureKind: fetched.failureKind ?? "error",
       persistWarning: null,
     };
@@ -87,8 +92,8 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
 
       if (gemini.error || !gemini.insights) {
         const failure = toQueryFailure(
-          gemini.error ?? "Failed to generate the analysis report.",
-          "Failed to generate the analysis report."
+          gemini.error ?? GENERATE_USER_FACING_COPY.generateFailed,
+          GENERATE_USER_FACING_COPY.generateFailed
         );
         return {
           data: null,
@@ -111,7 +116,7 @@ export async function generateTrendReport(): Promise<GenerateTrendsResult> {
     } catch (error) {
       const failure = toQueryFailure(
         error,
-        "Failed to generate the analysis report."
+        GENERATE_USER_FACING_COPY.generateFailed
       );
       return {
         data: null,

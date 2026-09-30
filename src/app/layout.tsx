@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { ROOT_LAYOUT_DESCRIPTION } from "@/lib/dashboard/site-metadata";
 
 import "./globals.css";
 
@@ -17,8 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "TaskLocal — Trust & Safety",
-  description:
-    "Trust & Safety dashboard for TaskLocal marketplace reviews and reported bookings.",
+  description: ROOT_LAYOUT_DESCRIPTION,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

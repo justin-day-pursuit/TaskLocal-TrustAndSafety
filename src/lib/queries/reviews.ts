@@ -4,6 +4,14 @@ import { getListingById } from "@/lib/queries/listings";
 import { queryFail, queryOk, type QueryFailureKind } from "@/lib/queries/query-status";
 import type { Booking, Listing, Review, ReviewerRole } from "@/lib/types/database";
 
+export const REVIEWS_USER_FACING_QUERY_FALLBACKS = {
+  repeatReportCounts: "Failed to compute repeat report counts",
+  reportedReviews: "Failed to load reported reviews",
+  reviewStats: "Failed to load review stats",
+  reviewDetail: "Failed to load review detail",
+  resolveReview: "Failed to resolve review",
+} as const;
+
 export interface ReviewStats {
   total: number;
   flagged: number;
@@ -87,7 +95,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (reviewError) {
-      return queryFail(reviewError, "Failed to compute repeat report counts");
+      return queryFail(reviewError, REVIEWS_USER_FACING_QUERY_FALLBACKS.repeatReportCounts);
     }
 
     if (!review) {
@@ -102,7 +110,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .maybeSingle();
 
     if (bookingError) {
-      return queryFail(bookingError, "Failed to compute repeat report counts");
+      return queryFail(bookingError, REVIEWS_USER_FACING_QUERY_FALLBACKS.repeatReportCounts);
     }
 
     if (!booking) {
@@ -122,7 +130,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
       .eq("reviewerRole", typedReview.reviewerRole);
 
     if (flagsError) {
-      return queryFail(flagsError, "Failed to compute repeat report counts");
+      return queryFail(flagsError, REVIEWS_USER_FACING_QUERY_FALLBACKS.repeatReportCounts);
     }
 
     const reviews = (openFlaggedReviews ?? []) as Review[];
@@ -155,7 +163,7 @@ export async function getRepeatFlagCountForReview(reviewId: string): Promise<{
 
     return queryOk(count);
   } catch (error) {
-    return queryFail(error, "Failed to compute repeat report counts");
+    return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.repeatReportCounts);
   }
 }
 
@@ -180,12 +188,12 @@ export async function getFlaggedReviews(reviewerRole?: ReviewerRole): Promise<{
     const { data, error } = await query;
 
     if (error) {
-      return queryFail(error, "Failed to load reported reviews");
+      return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.reportedReviews);
     }
 
     return queryOk(data as Review[]);
   } catch (error) {
-    return queryFail(error, "Failed to load reported reviews");
+    return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.reportedReviews);
   }
 }
 
@@ -215,7 +223,7 @@ export async function getReviewStats(): Promise<{
     if (firstError) {
       return queryFail(
         firstError,
-        "Failed to load review stats"
+        REVIEWS_USER_FACING_QUERY_FALLBACKS.reviewStats
       );
     }
 
@@ -227,7 +235,7 @@ export async function getReviewStats(): Promise<{
 
     return queryOk(stats);
   } catch (error) {
-    return queryFail(error, "Failed to load review stats");
+    return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.reviewStats);
   }
 }
 
@@ -251,7 +259,7 @@ export async function getReviewDetail(reviewId: string): Promise<{
       .maybeSingle();
 
     if (reviewError) {
-      return queryFail(reviewError, "Failed to load review detail");
+      return queryFail(reviewError, REVIEWS_USER_FACING_QUERY_FALLBACKS.reviewDetail);
     }
 
     if (!review) {
@@ -266,7 +274,7 @@ export async function getReviewDetail(reviewId: string): Promise<{
       .maybeSingle();
 
     if (bookingError) {
-      return queryFail(bookingError, "Failed to load review detail");
+      return queryFail(bookingError, REVIEWS_USER_FACING_QUERY_FALLBACKS.reviewDetail);
     }
 
     const typedBooking = (booking as Booking | null) ?? null;
@@ -296,7 +304,7 @@ export async function getReviewDetail(reviewId: string): Promise<{
       listing,
     });
   } catch (error) {
-    return queryFail(error, "Failed to load review detail");
+    return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.reviewDetail);
   }
 }
 
@@ -339,7 +347,7 @@ export async function listFlaggedReviewsWithBookings(): Promise<{
       .order("createdAt", { ascending: false });
 
     if (error) {
-      return queryFail(error, "Failed to load reported reviews");
+      return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.reportedReviews);
     }
 
     const reviews = (data ?? []) as Review[];
@@ -360,7 +368,7 @@ export async function listFlaggedReviewsWithBookings(): Promise<{
 
     return queryOk(attachBookingContext(reviews, bookings ?? []));
   } catch (error) {
-    return queryFail(error, "Failed to load reported reviews");
+    return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.reportedReviews);
   }
 }
 
@@ -379,11 +387,11 @@ export async function resolveReview(id: string): Promise<{
       .maybeSingle();
 
     if (error) {
-      return queryFail(error, "Failed to resolve review");
+      return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.resolveReview);
     }
 
     return queryOk((data as Review | null) ?? null);
   } catch (error) {
-    return queryFail(error, "Failed to resolve review");
+    return queryFail(error, REVIEWS_USER_FACING_QUERY_FALLBACKS.resolveReview);
   }
 }
