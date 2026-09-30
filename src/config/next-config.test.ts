@@ -6,6 +6,21 @@ describe("next.config redirects", () => {
   it("maps legacy routes to dashboard and analysis with permanent redirects", async () => {
     const redirects = await nextConfig.redirects!();
 
+    expect(
+      redirects.some(
+        (rule) =>
+          rule.source === "/flagged" && rule.destination === "/action-needed"
+      )
+    ).toBe(false);
+    expect(
+      redirects.some(
+        (rule) =>
+          rule.source === "/flagged/:id" &&
+          rule.destination === "/action-needed/:id"
+      )
+    ).toBe(false);
+    expect(redirects.every((rule) => rule.permanent === true)).toBe(true);
+
     expect(redirects).toEqual([
       {
         source: "/trends",
