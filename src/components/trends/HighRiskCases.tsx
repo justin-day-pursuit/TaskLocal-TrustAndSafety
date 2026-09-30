@@ -28,7 +28,7 @@ function severityClassName(severity: HighRiskSeverity): string {
 
 function caseHref(item: GroundedHighRiskCase): string {
   if (item.flag && !item.handled) {
-    return `/action-needed/${item.reviewId}`;
+    return `/?view=unhandled&expanded=${encodeURIComponent(item.reviewId)}`;
   }
   return reviewsHref(parseReviewsCatalogParams({ qReview: item.reviewId }));
 }
@@ -49,7 +49,7 @@ export function HighRiskCases({ cases }: HighRiskCasesProps) {
       <h3 className="text-lg font-medium text-tl-text">High-risk cases</h3>
       <p className="mt-1 text-sm text-tl-muted">
         Sample of reviews sent to Gemini, not a full-corpus scan. Open a case in
-        the action-needed queue or reviews catalog.
+        the dashboard unhandled view or reviews catalog.
       </p>
       {cases.length === 0 ? (
         <p className="mt-4 text-sm text-tl-muted">

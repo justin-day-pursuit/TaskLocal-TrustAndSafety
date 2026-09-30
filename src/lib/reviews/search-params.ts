@@ -1,4 +1,5 @@
 import { REVIEWER_ROLES } from "@/lib/constants/enums";
+import { dashboardHref } from "@/lib/dashboard/search-params";
 import type { ReviewerRole } from "@/lib/types/database";
 
 /** PRD §7 `/reviews` URL contract — typed state with documented defaults. */
@@ -303,23 +304,37 @@ export function serializeActionNeededListParams(
   return parts.join("&");
 }
 
-/** Full list path including non-default search params (for links and redirectTo). */
+/** Dashboard unhandled drill-down (legacy name kept for callers). */
 export function buildActionNeededHref(params: ActionNeededListParams): string {
-  const qs = serializeActionNeededListParams(params);
-  return qs ? `/action-needed?${qs}` : "/action-needed";
+  return dashboardHref({
+    view: "unhandled",
+    role: params.role,
+    page: params.page,
+    pageSize: params.pageSize,
+    expanded: params.expanded,
+  });
 }
 
-/** Detail path carrying list query params so resolve/back can return to the same view. */
+/** Unhandled view with a row expanded (legacy name kept for callers). */
 export function buildActionNeededDetailHref(
   reviewId: string,
   listParams?: ActionNeededListParams
 ): string {
   if (!listParams) {
-    return `/action-needed/${reviewId}`;
+    return dashboardHref({
+      view: "unhandled",
+      role: "all",
+      page: DEFAULT_PAGE,
+      pageSize: DEFAULT_PAGE_SIZE,
+      expanded: reviewId,
+    });
   }
 
-  const qs = serializeActionNeededListParams(listParams);
-  return qs
-    ? `/action-needed/${reviewId}?${qs}`
-    : `/action-needed/${reviewId}`;
+  return dashboardHref({
+    view: "unhandled",
+    role: listParams.role,
+    page: listParams.page,
+    pageSize: listParams.pageSize,
+    expanded: reviewId,
+  });
 }

@@ -28,9 +28,4 @@ export async function resolveReviewAction(reviewId: string): Promise<
   revalidatePath("/");
   revalidatePath("/reviews");
   revalidatePath("/analysis");
-  revalidatePath("/trends");
-  revalidatePath("/action-needed");
-  revalidatePath(`/action-needed/${reviewId}`);
-  revalidatePath("/flagged");
-  revalidatePath(`/flagged/${reviewId}`);
 }

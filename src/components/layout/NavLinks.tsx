@@ -5,10 +5,9 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
-  { href: "/action-needed", label: "Action needed" },
   { href: "/reviews", label: "Reviews" },
-  { href: "/trends", label: "Trends" },
-];
+  { href: "/analysis", label: "Analysis" },
+] as const;
 
 export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/") {
@@ -18,13 +17,22 @@ export function isNavActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function NavLinks() {
+export const NAV_ITEM_LABELS = NAV_ITEMS.map((item) => item.label);
+
+interface NavLinksProps {
+  /** When true, show icon + text attention on the Analysis nav item (PRD §5.1). */
+  analysisStale?: boolean;
+}
+
+export function NavLinks({ analysisStale = false }: NavLinksProps) {
   const pathname = usePathname();
 
   return (
     <nav className="flex flex-col gap-1">
       {NAV_ITEMS.map((item) => {
         const isActive = isNavActive(pathname, item.href);
+        const showStaleAttention =
+          item.href === "/analysis" && analysisStale && !isActive;
 
         return (
           <Link
@@ -36,7 +44,15 @@ export function NavLinks() {
                 : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
             }`}
           >
-            {item.label}
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span>{item.label}</span>
+              {showStaleAttention ? (
+                <span className="inline-flex items-center gap-1 text-xs font-normal text-amber-900">
+                  <span aria-hidden="true">!</span>
+                  <span>Analysis due</span>
+                </span>
+              ) : null}
+            </span>
           </Link>
         );
       })}

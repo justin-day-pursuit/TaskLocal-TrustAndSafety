@@ -14,9 +14,7 @@ import {
   type DashboardParams,
 } from "@/lib/dashboard/search-params";
 import {
-  serializeActionNeededListParams,
   serializeReviewsCatalogParams,
-  type ActionNeededListParams,
   type ReviewsCatalogParams,
 } from "@/lib/reviews/search-params";
 
@@ -32,12 +30,6 @@ const ReviewRowExpandContext = createContext<ReviewRowExpandContextValue | null>
 
 type ReviewRowExpandProviderProps =
   | {
-      listPath: "/action-needed";
-      listParams: ActionNeededListParams;
-      initialExpandedId?: string;
-      children: ReactNode;
-    }
-  | {
       listPath: "/reviews";
       listParams: ReviewsCatalogParams;
       initialExpandedId?: string;
@@ -51,8 +43,8 @@ type ReviewRowExpandProviderProps =
     };
 
 function buildHref(
-  listPath: "/" | "/action-needed" | "/reviews",
-  listParams: ActionNeededListParams | ReviewsCatalogParams | DashboardParams,
+  listPath: "/" | "/reviews",
+  listParams: ReviewsCatalogParams | DashboardParams,
   expanded?: string
 ): string {
   if (listPath === "/") {
@@ -60,14 +52,6 @@ function buildHref(
       ...(listParams as DashboardParams),
       expanded,
     });
-  }
-
-  if (listPath === "/action-needed") {
-    const qs = serializeActionNeededListParams({
-      ...(listParams as ActionNeededListParams),
-      expanded,
-    });
-    return qs ? `/action-needed?${qs}` : "/action-needed";
   }
 
   const qs = serializeReviewsCatalogParams({

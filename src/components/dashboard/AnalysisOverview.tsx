@@ -198,7 +198,7 @@ export function AnalysisOverview({
 
       <p className="text-sm text-zinc-600">
         Full charts and grounding tables are available on the{" "}
-        <Link href="/trends" className="font-medium text-zinc-900 underline-offset-2 hover:underline">
+        <Link href="/analysis" className="font-medium text-zinc-900 underline-offset-2 hover:underline">
           Analysis
         </Link>{" "}
         page.

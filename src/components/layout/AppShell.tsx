@@ -1,4 +1,7 @@
 import { NavLinks } from "@/components/layout/NavLinks";
+import { getAppTimeZone } from "@/lib/config/app-timezone";
+import { computeFreshness } from "@/lib/trends/freshness";
+import { loadLastTrendReport } from "@/lib/trends/persist";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -12,7 +15,14 @@ function TaskLocalMark() {
   );
 }
 
-export function AppShell({ children }: AppShellProps) {
+export async function AppShell({ children }: AppShellProps) {
+  const loaded = await loadLastTrendReport();
+  const freshness = computeFreshness({
+    lastSuccessAt: loaded.data?.generatedAt ?? null,
+    now: new Date(),
+    timeZone: getAppTimeZone(),
+  });
+
   return (
     <div className="h-screen overflow-hidden bg-zinc-50">
       <div className="mx-auto flex h-full max-w-7xl">
@@ -23,7 +33,7 @@ export function AppShell({ children }: AppShellProps) {
               Trust & Safety
             </h1>
           </div>
-          <NavLinks />
+          <NavLinks analysisStale={freshness.isStale} />
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -33,7 +43,7 @@ export function AppShell({ children }: AppShellProps) {
               Trust & Safety
             </h1>
             <div className="mt-4">
-              <NavLinks />
+              <NavLinks analysisStale={freshness.isStale} />
             </div>
           </header>
 
