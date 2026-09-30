@@ -167,4 +167,4 @@ src/
 - `npm run build` — production build
 - `npm run start` — run production server
 - `npm run lint` — ESLint
-- `npm test` — run offline unit tests (Vitest; 34 files / 221 tests on this branch; no Supabase or `.env.local` required)
+- `npm test` — run offline unit tests (Vitest; 35 files / 225 tests on this branch; no Supabase or `.env.local` required)
