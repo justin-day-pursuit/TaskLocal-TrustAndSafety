@@ -47,7 +47,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-50">
       <div className="mx-auto max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
-        <Suspense fallback={<QueryLoadingStatus copyKey="trendReport" />}>
+        <Suspense fallback={<QueryLoadingStatus copyKey="analysisReport" />}>
           <DashboardFreshnessSection />
         </Suspense>
 
@@ -61,7 +61,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </Suspense>
         ) : null}
 
-        <Suspense fallback={<QueryLoadingStatus copyKey="trendReport" />}>
+        <Suspense fallback={<QueryLoadingStatus copyKey="analysisReport" />}>
           <DashboardAnalysisSection />
         </Suspense>
       </div>

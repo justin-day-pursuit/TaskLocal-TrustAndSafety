@@ -25,6 +25,11 @@ import { buildIlikeOrFilter } from "@/lib/postgrest/ilike-or-filter";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Booking, Review, ReviewerRole } from "@/lib/types/database";
 
+export const REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS = {
+  catalog: "Failed to load review catalog",
+  reportedReviews: "Failed to load reported reviews",
+} as const;
+
 export interface PaginatedReviewListResult {
   reviews: Review[];
   totalCount: number;
@@ -129,7 +134,7 @@ export async function getReviewCatalog(
     }
     return await getReviewCatalogReviewFirst(params);
   } catch (error) {
-    const failure = queryFail(error, "Failed to load review catalog");
+    const failure = queryFail(error, REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS.catalog);
     return emptyCatalogResult(params, {
       error: failure.error,
       failureKind: failure.failureKind,
@@ -147,7 +152,7 @@ async function getReviewCatalogReviewFirst(
   const { count, error: countError } = await countQuery;
 
   if (countError) {
-    const failure = queryFail(countError, "Failed to load review catalog");
+    const failure = queryFail(countError, REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS.catalog);
     return emptyCatalogResult(params, {
       error: failure.error,
       failureKind: failure.failureKind,
@@ -172,7 +177,7 @@ async function getReviewCatalogReviewFirst(
   const { data, error } = await query.range(from, to);
 
   if (error) {
-    const failure = queryFail(error, "Failed to load review catalog");
+    const failure = queryFail(error, REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS.catalog);
     return emptyCatalogResult(params, {
       error: failure.error,
       failureKind: failure.failureKind,
@@ -229,7 +234,7 @@ async function getReviewCatalogBookingFirst(
   );
 
   if (error) {
-    const failure = queryFail(error, "Failed to load review catalog");
+    const failure = queryFail(error, REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS.catalog);
     return emptyCatalogResult(params, {
       error: failure.error,
       failureKind: failure.failureKind,
@@ -319,7 +324,7 @@ export async function getFlaggedReviewsPaginated(params: {
     if (countError) {
       const failure = queryFail(
         countError,
-        "Failed to load flagged reviews"
+        REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS.reportedReviews
       );
       return emptyCatalogResult(flaggedQueueParams(params), {
         error: failure.error,
@@ -346,7 +351,7 @@ export async function getFlaggedReviewsPaginated(params: {
     const { data, error } = await query;
 
     if (error) {
-      const failure = queryFail(error, "Failed to load flagged reviews");
+      const failure = queryFail(error, REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS.reportedReviews);
       return emptyCatalogResult(flaggedQueueParams(params), {
         error: failure.error,
         failureKind: failure.failureKind,
@@ -370,7 +375,7 @@ export async function getFlaggedReviewsPaginated(params: {
       failureKind: null,
     };
   } catch (error) {
-    const failure = queryFail(error, "Failed to load flagged reviews");
+    const failure = queryFail(error, REVIEW_CATALOG_USER_FACING_QUERY_FALLBACKS.reportedReviews);
     return emptyCatalogResult(flaggedQueueParams(params), {
       error: failure.error,
       failureKind: failure.failureKind,

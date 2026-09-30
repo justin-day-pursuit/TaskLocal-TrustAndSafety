@@ -39,9 +39,9 @@ export const QUERY_COPY = {
     timeout: "The request timed out while loading dashboard stats.",
   },
   flaggedReviews: {
-    loading: "Loading open flagged reviews…",
-    error: "There was an error loading open flagged reviews.",
-    timeout: "The request timed out while loading open flagged reviews.",
+    loading: "Loading open reported reviews…",
+    error: "There was an error loading open reported reviews.",
+    timeout: "The request timed out while loading open reported reviews.",
   },
   reviewsCatalog: {
     loading: "Loading the reviews catalog…",
@@ -60,9 +60,9 @@ export const QUERY_COPY = {
     timeout: "The request timed out while loading bookings for these reviews.",
   },
   repeatFlags: {
-    loading: "Loading repeat flag counts…",
-    error: "There was an error loading repeat flag counts.",
-    timeout: "The request timed out while loading repeat flag counts.",
+    loading: "Loading repeat report counts…",
+    error: "There was an error loading repeat report counts.",
+    timeout: "The request timed out while loading repeat report counts.",
   },
   resolve: {
     loading: "Resolving this review…",
@@ -70,14 +70,14 @@ export const QUERY_COPY = {
     timeout: "The request timed out while resolving this review.",
   },
   trendReport: {
-    loading: "Loading the last trend report…",
-    error: "There was an error loading the last trend report.",
-    timeout: "The request timed out while loading the last trend report.",
+    loading: "Loading the last analysis report…",
+    error: "There was an error loading the last analysis report.",
+    timeout: "The request timed out while loading the last analysis report.",
   },
   trendGenerate: {
-    loading: "Generating the trend report…",
-    error: "There was an error generating the trend report.",
-    timeout: "The request timed out while generating the trend report.",
+    loading: "Generating the analysis report…",
+    error: "There was an error generating the analysis report.",
+    timeout: "The request timed out while generating the analysis report.",
   },
   analysisReport: {
     loading: "Loading the last analysis report…",
